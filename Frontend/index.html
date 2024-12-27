@@ -7,17 +7,36 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <h1>Daily Progress Tracker</h1>
-    
-    <!-- Date Selector -->
-    <div id="date-selector">
-        <label for="progress-date">Select Date:</label>
-        <input type="date" id="progress-date" />
+    <div class="container">
+        <header>
+            <h1>Daily Progress Tracker</h1>
+        </header>
+        
+        <!-- Date Selector -->
+        <section id="date-selector">
+            <label for="progress-date">Select Date:</label>
+            <input type="date" id="progress-date" />
+        </section>
+
+        <!-- Loading State -->
+        <div id="loading" style="display: none;">Loading...</div>
+
+        <!-- Progress List -->
+        <section id="progress-list">
+            <!-- Habits will be dynamically generated -->
+        </section>
+        
+        <!-- Summary Section -->
+        <section id="summary">
+            <h2>Today's Summary</h2>
+            <p id="completed-count">Completed: 0 / 8</p>
+            <p id="completion-percentage">Completion: 0%</p>
+        </section>
     </div>
 
-    <div id="progress-list">
-        <!-- Habits will be dynamically generated -->
-    </div>
+    <footer>
+        <p>© 2024 Daily Progress Tracker. Built with ❤️.</p>
+    </footer>
 
     <script src="script.js"></script>
 </body>

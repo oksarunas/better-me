@@ -1,13 +1,27 @@
+/* Define CSS variables for consistent theming */
+:root {
+    --background-color: #f4f4f4;
+    --primary-color: #4caf50;
+    --secondary-color: #ccc;
+    --font-color: #333;
+    --text-secondary: #555; /* Better contrast for secondary text */
+    --box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+}
+
 body {
     font-family: Arial, sans-serif;
     margin: 0;
     padding: 20px;
-    background-color: #f4f4f4;
+    background-color: var(--background-color);
+    color: var(--font-color);
+    line-height: 1.6;
 }
 
 h1 {
     text-align: center;
     margin-bottom: 20px;
+    font-size: 1.8rem;
+    color: var(--primary-color);
 }
 
 #progress-list {
@@ -25,7 +39,14 @@ h1 {
     background: #fff;
     padding: 10px;
     border-radius: 5px;
-    box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+    box-shadow: var(--box-shadow);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+/* Add hover effect on habit cards */
+.habit:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.15);
 }
 
 .switch {
@@ -48,7 +69,7 @@ h1 {
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: #ccc;
+    background-color: var(--secondary-color);
     transition: 0.4s;
     border-radius: 34px;
 }
@@ -66,7 +87,7 @@ h1 {
 }
 
 input:checked + .slider {
-    background-color: #4caf50;
+    background-color: var(--primary-color);
 }
 
 input:checked + .slider:before {
@@ -82,5 +103,100 @@ input:checked + .slider:before {
     padding: 5px;
     font-size: 1rem;
     border-radius: 5px;
-    border: 1px solid #ccc;
+    border: 1px solid var(--secondary-color);
+    transition: border-color 0.2s;
+}
+
+/* Add hover effect for date input */
+#progress-date:hover {
+    border-color: var(--primary-color);
+}
+
+/* Add focus effect for date input */
+#progress-date:focus {
+    border-color: var(--primary-color);
+    outline: none;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    body {
+        padding: 15px;
+    }
+
+    h1 {
+        font-size: 1.6rem;
+    }
+
+    #progress-list {
+        max-width: 90%;
+    }
+
+    .habit {
+        padding: 8px;
+    }
+
+    #progress-date {
+        font-size: 0.9rem;
+    }
+}
+
+@media (max-width: 600px) {
+    body {
+        padding: 10px;
+    }
+
+    h1 {
+        font-size: 1.5rem;
+    }
+
+    .habit {
+        padding: 6px;
+    }
+
+    #progress-date {
+        font-size: 0.8rem;
+    }
+}
+
+/* Streak Display */
+.streak {
+    font-size: 0.9rem;
+    color: var(--text-secondary); /* Better contrast */
+    margin-left: 10px;
+}
+
+/* Summary Section */
+#summary {
+    margin-top: 20px;
+    text-align: center;
+    padding: 20px; /* Increased spacing */
+    background: #fff;
+    border-radius: 5px;
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.1);
+    animation: fadeIn 0.3s ease-in; /* Smooth animation for appearance */
+}
+
+#summary h2 {
+    margin-bottom: 10px;
+    font-size: 1.4rem;
+    color: var(--primary-color);
+}
+
+#summary p {
+    margin: 5px 0;
+    font-size: 1rem;
+    color: var(--text-secondary);
+}
+
+/* Fade-in animation */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
 }
