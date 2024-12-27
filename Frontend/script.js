@@ -11,25 +11,34 @@ const habits = [
 
 const apiUrl = "http://localhost:9000"; // Backend URL
 
-// Get DOM elements once
+// Get DOM elements
 const progressList = document.getElementById("progress-list");
 const dateInput = document.getElementById("progress-date");
 const loadingIndicator = document.getElementById("loading");
 const completedCountElement = document.getElementById("completed-count");
 const completionPercentageElement = document.getElementById("completion-percentage");
 
+// Utility function for API calls
+async function apiFetch(endpoint, options = {}) {
+    try {
+        const response = await fetch(`${apiUrl}${endpoint}`, options);
+        if (!response.ok) {
+            const error = await response.json();
+            throw new Error(error.message || "An error occurred");
+        }
+        return await response.json();
+    } catch (error) {
+        console.error("API Fetch Error:", error);
+        alert(error.message || "Failed to communicate with the server.");
+        throw error;
+    }
+}
+
 // Show or hide loading indicator
 function toggleLoading(show) {
     if (loadingIndicator) {
         loadingIndicator.style.display = show ? "block" : "none";
     }
-}
-
-// Fetch progress data from the backend
-async function fetchProgress(date) {
-    const response = await fetch(`${apiUrl}/progress/${date}`);
-    if (!response.ok) throw new Error("Failed to fetch progress data");
-    return await response.json();
 }
 
 // Create a habit element
@@ -63,7 +72,7 @@ function updateSummary(completedCount, totalHabits) {
 async function loadProgress(date) {
     try {
         toggleLoading(true); // Show loading indicator
-        const data = await fetchProgress(date);
+        const data = await apiFetch(`/progress/${date}`);
 
         // Clear and populate progress list
         progressList.innerHTML = "";
@@ -90,7 +99,6 @@ async function loadProgress(date) {
         updateSummary(completedCount, habits.length);
     } catch (error) {
         console.error("Error loading progress:", error);
-        alert("Failed to load progress. Please try again later.");
     } finally {
         toggleLoading(false); // Hide loading indicator
     }
@@ -101,32 +109,60 @@ async function updateProgress(habit, status) {
     const date = dateInput.value;
     try {
         toggleLoading(true); // Show loading indicator
-        const response = await fetch(`${apiUrl}/progress/`, {
+        await apiFetch("/progress/", {
             method: "POST",
             headers: {
                 "Content-Type": "application/json",
             },
             body: JSON.stringify({ date, habit, status }),
         });
-        if (!response.ok) throw new Error("Failed to update progress");
         await loadProgress(date); // Reload progress after updating
     } catch (error) {
         console.error("Error updating progress:", error);
-        alert("Failed to update progress. Please try again.");
     } finally {
         toggleLoading(false); // Hide loading indicator
     }
 }
 
-// Handle date changes
-dateInput.addEventListener("change", (event) => {
-    const date = event.target.value;
-    loadProgress(date);
-});
+// Save all progress in bulk
+async function saveProgress() {
+    const date = dateInput.value;
+    const updates = Array.from(progressList.querySelectorAll(".habit")).map(habitElement => {
+        const habitName = habitElement.querySelector("span").textContent.split(" Streak")[0];
+        const isChecked = habitElement.querySelector("input[type='checkbox']").checked;
+        return { habit: habitName, status: isChecked };
+    });
 
-// Set today's date and load progress on page load
+    try {
+        toggleLoading(true); // Show loading indicator
+        await apiFetch("/progress/bulk", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ date, updates }),
+        });
+        alert("Progress saved successfully!");
+    } catch (error) {
+        console.error("Error saving progress:", error);
+    } finally {
+        toggleLoading(false); // Hide loading indicator
+    }
+}
+
+// Handle date navigation
+function changeDate(days) {
+    const date = new Date(dateInput.value);
+    date.setDate(date.getDate() + days);
+    dateInput.value = date.toISOString().split("T")[0];
+    loadProgress(dateInput.value);
+}
+
+// Initialize page
 document.addEventListener("DOMContentLoaded", () => {
     const today = new Date().toISOString().split("T")[0];
     dateInput.value = today;
     loadProgress(today);
+
+    document.getElementById("save-progress").addEventListener("click", saveProgress);
+    document.getElementById("prev-date").addEventListener("click", () => changeDate(-1));
+    document.getElementById("next-date").addEventListener("click", () => changeDate(1));
 });

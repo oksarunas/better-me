@@ -8,15 +8,22 @@
 </head>
 <body>
     <div class="container">
+        <!-- Header -->
         <header>
             <h1>Daily Progress Tracker</h1>
         </header>
-        
+
         <!-- Date Selector -->
         <section id="date-selector">
             <label for="progress-date">Select Date:</label>
             <input type="date" id="progress-date" />
         </section>
+
+        <!-- Date Navigation -->
+        <div id="date-navigation">
+            <button id="prev-date" class="btn">Previous</button>
+            <button id="next-date" class="btn">Next</button>
+        </div>
 
         <!-- Loading State -->
         <div id="loading" style="display: none;">Loading...</div>
@@ -25,7 +32,12 @@
         <section id="progress-list">
             <!-- Habits will be dynamically generated -->
         </section>
-        
+
+        <!-- Save Button -->
+        <div id="save-container">
+            <button id="save-progress" class="btn">Save Progress</button>
+        </div>
+
         <!-- Summary Section -->
         <section id="summary">
             <h2>Today's Summary</h2>
@@ -34,6 +46,7 @@
         </section>
     </div>
 
+    <!-- Footer -->
     <footer>
         <p>© 2024 Daily Progress Tracker. Built with ❤️.</p>
     </footer>
