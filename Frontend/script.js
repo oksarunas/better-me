@@ -9,7 +9,7 @@ const habits = [
     "No drink",
 ];
 
-const apiUrl = "http://localhost:9000"; // Backend URL
+const apiUrl = "https://betterme.website/api";
 
 // Get DOM elements
 const progressList = document.getElementById("progress-list");
@@ -28,8 +28,8 @@ async function apiFetch(endpoint, options = {}) {
         }
         return await response.json();
     } catch (error) {
+        showError(error.message || "Failed to communicate with the server.");
         console.error("API Fetch Error:", error);
-        alert(error.message || "Failed to communicate with the server.");
         throw error;
     }
 }
@@ -38,6 +38,16 @@ async function apiFetch(endpoint, options = {}) {
 function toggleLoading(show) {
     if (loadingIndicator) {
         loadingIndicator.style.display = show ? "block" : "none";
+    }
+}
+
+// Display error messages
+function showError(message) {
+    const errorElement = document.getElementById("error-message");
+    if (errorElement) {
+        errorElement.textContent = message;
+        errorElement.style.display = "block";
+        setTimeout(() => (errorElement.style.display = "none"), 5000); // Auto-hide
     }
 }
 
@@ -71,62 +81,51 @@ function updateSummary(completedCount, totalHabits) {
 // Load progress for the selected date
 async function loadProgress(date) {
     try {
-        toggleLoading(true); // Show loading indicator
+        toggleLoading(true);
         const data = await apiFetch(`/progress/${date}`);
-
-        // Clear and populate progress list
         progressList.innerHTML = "";
 
-        let completedCount = 0; // Counter for completed habits
+        let completedCount = 0;
         const fragment = document.createDocumentFragment();
 
         habits.forEach((habit) => {
             const habitData = data.find((h) => h.habit === habit);
             const isChecked = habitData ? habitData.status : false;
-            const streak = habitData && habitData.streak ? habitData.streak : 0;
+            const streak = habitData?.streak || 0;
 
-            // Increment completed count
             if (isChecked) completedCount++;
 
-            // Create and append habit element
             const habitElement = createHabitElement(habit, isChecked, streak);
             fragment.appendChild(habitElement);
         });
 
         progressList.appendChild(fragment);
-
-        // Update summary
         updateSummary(completedCount, habits.length);
     } catch (error) {
         console.error("Error loading progress:", error);
     } finally {
-        toggleLoading(false); // Hide loading indicator
+        toggleLoading(false);
     }
 }
 
 // Update progress for a habit
 async function updateProgress(habit, status) {
-    const date = dateInput.value;
     try {
-        toggleLoading(true); // Show loading indicator
+        toggleLoading(true);
         await apiFetch("/progress/", {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json",
-            },
-            body: JSON.stringify({ date, habit, status }),
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ date: getCurrentDate(), habit, status }),
         });
-        await loadProgress(date); // Reload progress after updating
     } catch (error) {
         console.error("Error updating progress:", error);
     } finally {
-        toggleLoading(false); // Hide loading indicator
+        toggleLoading(false);
     }
 }
 
 // Save all progress in bulk
 async function saveProgress() {
-    const date = dateInput.value;
     const updates = Array.from(progressList.querySelectorAll(".habit")).map(habitElement => {
         const habitName = habitElement.querySelector("span").textContent.split(" Streak")[0];
         const isChecked = habitElement.querySelector("input[type='checkbox']").checked;
@@ -134,23 +133,23 @@ async function saveProgress() {
     });
 
     try {
-        toggleLoading(true); // Show loading indicator
+        toggleLoading(true);
         await apiFetch("/progress/bulk", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ date, updates }),
+            body: JSON.stringify({ date: getCurrentDate(), updates }),
         });
         alert("Progress saved successfully!");
     } catch (error) {
         console.error("Error saving progress:", error);
     } finally {
-        toggleLoading(false); // Hide loading indicator
+        toggleLoading(false);
     }
 }
 
 // Handle date navigation
 function changeDate(days) {
-    const date = new Date(dateInput.value);
+    const date = new Date(getCurrentDate());
     date.setDate(date.getDate() + days);
     dateInput.value = date.toISOString().split("T")[0];
     loadProgress(dateInput.value);
@@ -166,3 +165,8 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("prev-date").addEventListener("click", () => changeDate(-1));
     document.getElementById("next-date").addEventListener("click", () => changeDate(1));
 });
+
+// Utility to get the current date
+function getCurrentDate() {
+    return dateInput.value || new Date().toISOString().split("T")[0];
+}

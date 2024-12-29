@@ -1,7 +1,7 @@
 from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.orm import Session
 from pydantic import BaseModel, validator
-from typing import List
+from typing import List, Dict
 from datetime import date
 from database import SessionLocal, Progress, init_db
 from fastapi.middleware.cors import CORSMiddleware
@@ -16,7 +16,7 @@ app = FastAPI()
 # Add CORS Middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Update this for production
+    allow_origins=["https://betterme.website", "https://api.betterme.website"],  # Restrict origins
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -53,8 +53,10 @@ class ProgressUpdate(BaseModel):
             raise ValueError(f"Habit '{value}' is not valid.")
         return value
 
-# API to fetch progress for a date
-@app.get("/progress/{date}", response_model=List[ProgressUpdate])
+# Use an API prefix for all routes
+api = FastAPI()
+
+@api.get("/progress/{date}", response_model=List[ProgressUpdate], summary="Get progress for a specific date")
 def get_progress(date: date, db: Session = Depends(get_db)):
     progress_records = db.query(Progress).filter(Progress.date == date).all()
 
@@ -71,8 +73,7 @@ def get_progress(date: date, db: Session = Depends(get_db)):
         for record in progress_records
     ]
 
-# API to update progress
-@app.post("/progress/")
+@api.post("/progress/", summary="Update progress for a habit")
 def update_progress(progress: ProgressUpdate, db: Session = Depends(get_db)):
     db_record = db.query(Progress).filter(
         Progress.date == progress.date, Progress.habit == progress.habit
@@ -87,9 +88,10 @@ def update_progress(progress: ProgressUpdate, db: Session = Depends(get_db)):
     db.commit()
     return {"message": "Progress updated successfully"}
 
-# API to initialize progress for a new date
-@app.post("/progress/init")
+@api.post("/progress/init", summary="Initialize default progress for a new date")
 def initialize_progress(date: date, db: Session = Depends(get_db)):
+    if not date:
+        raise HTTPException(status_code=400, detail="Date is required")
     for habit in ALLOWED_HABITS:
         if not db.query(Progress).filter(Progress.date == date, Progress.habit == habit).first():
             db.add(Progress(date=date, habit=habit, status=False))
@@ -98,20 +100,25 @@ def initialize_progress(date: date, db: Session = Depends(get_db)):
     logging.info(f"Initialized progress for {date}.")
     return {"message": "Progress initialized for the date"}
 
-# Health check endpoint
-@app.get("/health")
+@api.get("/health", summary="Health check endpoint")
 def health_check():
     return {"status": "healthy"}
 
-# API for bulk updates
-@app.post("/progress/bulk")
-def update_bulk_progress(data: dict, db: Session = Depends(get_db)):
+@api.post("/progress/bulk", summary="Bulk update progress for multiple habits")
+def update_bulk_progress(data: Dict, db: Session = Depends(get_db)):
     date = data.get("date")
     updates = data.get("updates", [])
+
+    if not date or not updates:
+        raise HTTPException(status_code=400, detail="Date and updates are required")
 
     for update in updates:
         habit = update["habit"]
         status = update["status"]
+
+        if habit not in ALLOWED_HABITS:
+            logging.warning(f"Invalid habit in bulk update: {habit}")
+            continue
 
         db_record = db.query(Progress).filter(
             Progress.date == date, Progress.habit == habit
@@ -126,3 +133,6 @@ def update_bulk_progress(data: dict, db: Session = Depends(get_db)):
     db.commit()
     logging.info(f"Bulk progress updated for {date}.")
     return {"message": "Bulk progress updated successfully"}
+
+# Mount the API app under the /api prefix
+app.mount("/api", api)
