@@ -3,8 +3,6 @@ import logging
 from dotenv import load_dotenv
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import declarative_base, sessionmaker
-from sqlalchemy import Column, Integer, String, Boolean, Date, Index
-from sqlalchemy.sql import text
 
 # Initialize logging
 logging.basicConfig(level=logging.INFO)
@@ -20,21 +18,11 @@ async_session = sessionmaker(autocommit=False, autoflush=False, bind=engine, cla
 # Base class for models
 Base = declarative_base()
 
-# Progress model
-class Progress(Base):
-    __tablename__ = "progress"
-
-    id = Column(Integer, primary_key=True, index=True)
-    date = Column(Date, index=True, nullable=False)
-    habit = Column(String, nullable=False)
-    status = Column(Boolean, default=False)
-
-    __table_args__ = (
-        Index('ix_date_habit', "date", "habit"),
-    )
-
 # Initialize database
 async def init_db():
+    """
+    Initialize the database by creating tables based on models.
+    """
     try:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
@@ -42,3 +30,14 @@ async def init_db():
     except Exception as e:
         logging.error(f"Error initializing database: {e}")
         raise
+
+# Dependency to get a database session
+async def get_db():
+    """
+    Dependency to provide a database session for FastAPI routes.
+    """
+    async with async_session() as session:
+        try:
+            yield session
+        finally:
+            await session.close()
