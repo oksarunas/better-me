@@ -31,6 +31,7 @@ class ProgressCreate(ProgressBase):
 # Schema for reading progress from the database
 class ProgressRead(ProgressBase):
     id: int
+    streak: int = 0
 
     class Config:
         from_attributes = True  # Updated for Pydantic v2
