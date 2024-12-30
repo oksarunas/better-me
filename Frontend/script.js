@@ -108,7 +108,7 @@ async function loadProgress(date) {
     }
 }
 
-// Update progress for a habit
+// Update progress for a habit (auto-save when toggling)
 async function updateProgress(habit, status) {
     try {
         toggleLoading(true);
@@ -119,29 +119,6 @@ async function updateProgress(habit, status) {
         });
     } catch (error) {
         console.error("Error updating progress:", error);
-    } finally {
-        toggleLoading(false);
-    }
-}
-
-// Save all progress in bulk
-async function saveProgress() {
-    const updates = Array.from(progressList.querySelectorAll(".habit")).map(habitElement => {
-        const habitName = habitElement.querySelector("span").textContent.split(" Streak")[0];
-        const isChecked = habitElement.querySelector("input[type='checkbox']").checked;
-        return { habit: habitName, status: isChecked };
-    });
-
-    try {
-        toggleLoading(true);
-        await apiFetch("/progress/bulk", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ date: getCurrentDate(), updates }),
-        });
-        alert("Progress saved successfully!");
-    } catch (error) {
-        console.error("Error saving progress:", error);
     } finally {
         toggleLoading(false);
     }
@@ -161,7 +138,9 @@ document.addEventListener("DOMContentLoaded", () => {
     dateInput.value = today;
     loadProgress(today);
 
-    document.getElementById("save-progress").addEventListener("click", saveProgress);
+    // Remove (or comment out) the next line if you removed the Save Progress button from HTML
+    // document.getElementById("save-progress").addEventListener("click", saveProgress);
+
     document.getElementById("prev-date").addEventListener("click", () => changeDate(-1));
     document.getElementById("next-date").addEventListener("click", () => changeDate(1));
 });
