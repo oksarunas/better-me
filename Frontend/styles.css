@@ -3,8 +3,8 @@
     --background-color: #121212;      /* Dark background */
     --container-bg-color: #1e1e1e;    /* Slightly lighter dark */
     --primary-color: #BB86FC;         /* Accent color (Material Dark style) */
-    --secondary-color: #03dac6;       /* Another accent color or used for toggles */
-    --font-color: #f4f4f4;            /* Main text color (light for dark bg) */
+    --secondary-color: #03dac6;       /* Secondary accent color */
+    --font-color: #f4f4f4;            /* Main text color */
     --text-secondary: #b3b3b3;        /* Subtle text color */
     --box-shadow: 0 2px 8px rgba(0, 0, 0, 0.7); /* Darker shadow on dark theme */
 }
@@ -81,7 +81,7 @@ h1 {
 }
 
 .btn:hover {
-    background-color: #00f721; /* Slightly darker or lighter variant of primary */
+    background-color: #d884fc; /* Slightly lighter variant of primary */
 }
 
 .btn:focus {
@@ -97,20 +97,62 @@ h1 {
     margin-bottom: 20px;
 }
 
+/* Habit Card */
 .habit {
     display: flex;
     justify-content: space-between;
     align-items: center;
     background: var(--container-bg-color);
-    padding: 10px;
-    border-radius: 5px;
+    color: #fff;
+    padding: 10px 15px;
+    border-radius: 8px;
     box-shadow: var(--box-shadow);
-    transition: transform 0.2s, box-shadow 0.2s;
+    transition: transform 0.2s ease, box-shadow 0.3s ease, background-color 0.3s ease;
+    position: relative;
+    overflow: hidden;
 }
 
 .habit:hover {
     transform: translateY(-3px);
     box-shadow: 0 4px 12px rgba(0, 0, 0, 0.8);
+}
+
+/* Completed Habit */
+.habit.completed {
+    background: #4caf50; /* Green */
+    color: #fff;
+    transform: scale(1.05);
+}
+
+/* Streak Badge */
+.streak-badge {
+    background: #fbbf24; /* Yellow */
+    color: #000;
+    border-radius: 50%;
+    width: 30px;
+    height: 30px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 0.9rem;
+    font-weight: bold;
+    margin-left: 10px;
+}
+
+/* Streak Progress Bar */
+.streak-progress {
+    width: 100%;
+    background-color: #374151; /* Gray */
+    height: 8px;
+    border-radius: 5px;
+    overflow: hidden;
+    margin-top: 10px;
+    position: relative;
+}
+.streak-progress-fill {
+    height: 100%;
+    background-color: #fbbf24; /* Yellow */
+    transition: width 0.5s ease;
 }
 
 /* Switch Styling */
@@ -134,7 +176,7 @@ h1 {
     left: 0;
     right: 0;
     bottom: 0;
-    background-color: #666; /* or var(--text-secondary) */
+    background-color: var(--text-secondary);
     transition: 0.4s;
     border-radius: 34px;
 }
@@ -199,15 +241,19 @@ input:checked + .slider:before {
     }
 }
 
-/* Fade-in Animation */
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(-10px);
-    }
+/* Confetti Effect */
+.confetti {
+    position: fixed;
+    width: 100%;
+    height: 100%;
+    background: url('confetti.gif') center center / cover no-repeat;
+    z-index: 1000;
+    pointer-events: none;
+    animation: fadeOut 3s forwards;
+}
+@keyframes fadeOut {
     to {
-        opacity: 1;
-        transform: translateY(0);
+        opacity: 0;
     }
 }
 
