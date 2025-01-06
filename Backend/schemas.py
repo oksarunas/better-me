@@ -1,4 +1,4 @@
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, field_validator
 from datetime import date
 from typing import List
 
@@ -9,7 +9,7 @@ class ProgressBase(BaseModel):
     habit: str
     status: bool
 
-    @validator("habit")
+    @field_validator("habit", mode="before")
     def validate_habit(cls, value):
         """
         Ensure the habit is valid. Replace 'ALLOWED_HABITS' with the global list if needed.

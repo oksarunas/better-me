@@ -7,9 +7,10 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, validator
 from typing import List
 from datetime import date
+from contextlib import asynccontextmanager
 
 from database import async_session, init_db
-from logic import get_progress_by_date, update_progress, bulk_update_progress, initialize_progress
+from logic import get_progress_by_date, update_progress, bulk_update_progress
 from schemas import ProgressRead, ProgressCreate, BulkUpdate
 
 # Initialize logging
@@ -18,8 +19,22 @@ logging.basicConfig(level=logging.INFO)
 # Load environment variables
 load_dotenv()
 
+# Allowed habits
+ALLOWED_HABITS = [
+    "7 hours of sleep", "Breakfast", "Workout", "Code",
+    "Creatine", "Read", "Vitamins", "No drink",
+]
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup: Initialize the database
+    await init_db()
+    yield
+    # Shutdown: Add cleanup code here if needed
+    pass
+
 # Initialize FastAPI app
-app = FastAPI()
+app = FastAPI(lifespan=lifespan)
 
 # CORS settings
 app.add_middleware(
@@ -34,17 +49,6 @@ app.add_middleware(
 async def get_db():
     async with async_session() as db:
         yield db
-
-# Initialize database on startup
-@app.on_event("startup")
-async def startup():
-    await init_db()
-
-# Allowed habits
-ALLOWED_HABITS = [
-    "7 hours of sleep", "Breakfast", "Workout", "Code",
-    "Creatine", "Read", "Vitamins", "No drink",
-]
 
 # API Router for progress-related routes
 progress_router = APIRouter(prefix="/progress", tags=["progress"])
