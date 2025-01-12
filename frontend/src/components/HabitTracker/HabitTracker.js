@@ -1,61 +1,110 @@
-import React, { useState, useEffect } from 'react';
-import './HabitTracker.css';
+import { CalendarIcon, CheckCircle2Icon, XCircleIcon } from 'lucide-react'
+import { Button } from "../ui/Button"
+import { Card, CardContent, CardHeader, CardTitle } from "../ui/Card"
+import { Progress } from "../ui/Progress"
+import { cn } from "../../lib/Utils"
 
-const HabitTracker = () => {
-  const [habits, setHabits] = useState([]); // Store fetched habits
-  const [loading, setLoading] = useState(false); // Track loading state
-  const [error, setError] = useState(null); // Track error state
+export default function HabitTracker() {
+  const habits = [
+    { 
+      category: "Health",
+      items: [
+        { name: "7 hours of sleep", streak: 2, completed: true },
+        { name: "Workout", streak: 0, completed: false },
+        { name: "Vitamins", streak: 0, completed: false },
+      ],
+    },
+    {
+      category: "Productivity",
+      items: [
+        { name: "Code", streak: 8, completed: true },
+        { name: "Read", streak: 0, completed: false },
+      ],
+    },
+    {
+      category: "Lifestyle",
+      items: [
+        { name: "Breakfast", streak: 2, completed: true },
+        { name: "Creatine", streak: 0, completed: false },
+        { name: "No drink", streak: 1, completed: true },
+      ],
+    },
+  ]
 
-  // Fetch habits on component mount
-  useEffect(() => {
-    const fetchHabits = async () => {
-      setLoading(true);
-      setError(null); // Reset error state before fetching
-
-      // Get today's date in YYYY-MM-DD format
-      const today = new Date().toISOString().split('T')[0];
-
-      try {
-        const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/progress/${today}`);
-        if (!response.ok) {
-          throw new Error(`Error: ${response.statusText}`);
-        }
-        const data = await response.json();
-        setHabits(data);
-      } catch (err) {
-        setError(err.message);
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchHabits();
-  }, []);
+  const totalHabits = habits.reduce((acc, category) => acc + category.items.length, 0)
+  const completedHabits = habits.reduce(
+    (acc, category) => acc + category.items.filter(item => item.completed).length,
+    0
+  )
+  const progress = (completedHabits / totalHabits) * 100
 
   return (
-    <div className="habit-tracker">
-      <h2>My Habits</h2>
-
-      {/* Loading State */}
-      {loading && <p>Loading...</p>}
-
-      {/* Error State */}
-      {error && <p className="error-message">Error: {error}</p>}
-
-      {/* Habits List */}
-      {!loading && !error && habits.length > 0 ? (
-        <ul>
-          {habits.map((habit, index) => (
-            <li key={index} className="habit-item">
-              <strong>{habit.habit}</strong> - {habit.status ? 'Completed' : 'Pending'}
-            </li>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-6">
+      <Card className="max-w-4xl mx-auto">
+        <CardHeader className="space-y-6">
+          <div className="flex justify-between items-center">
+            <CardTitle className="text-2xl font-bold">My Habits</CardTitle>
+            <Button variant="outline" size="sm" className="gap-2">
+              <CalendarIcon className="h-4 w-4" />
+              01/12/2025
+            </Button>
+          </div>
+          <div className="space-y-2">
+            <div className="flex justify-between text-sm">
+              <span>{completedHabits} / {totalHabits} Habits Completed</span>
+              <span>{progress.toFixed(0)}%</span>
+            </div>
+            <Progress value={progress} className="h-2" />
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          {habits.map((category, index) => (
+            <div key={index} className="space-y-4">
+              <h2 className="font-semibold text-lg">{category.category}</h2>
+              <div className="grid gap-3">
+                {category.items.map((habit, habitIndex) => (
+                  <div
+                    key={habitIndex}
+                    className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg"
+                  >
+                    <div className="flex items-center gap-3">
+                      {habit.completed ? (
+                        <CheckCircle2Icon className="h-5 w-5 text-green-500" />
+                      ) : (
+                        <XCircleIcon className="h-5 w-5 text-gray-400" />
+                      )}
+                      <span>{habit.name}</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span
+                        className={cn(
+                          "text-sm px-2 py-1 rounded",
+                          habit.streak > 0
+                            ? "bg-orange-100 dark:bg-orange-900/30 text-orange-600 dark:text-orange-400"
+                            : "bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400"
+                        )}
+                      >
+                        🔥 {habit.streak} days
+                      </span>
+                      <span
+                        className={cn(
+                          "text-sm font-medium",
+                          habit.completed
+                            ? "text-green-600 dark:text-green-400"
+                            : "text-gray-500"
+                        )}
+                      >
+                        {habit.completed ? "Completed" : "Pending"}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           ))}
-        </ul>
-      ) : (
-        !loading && !error && <p>No habits found.</p>
-      )}
+        </CardContent>
+      </Card>
     </div>
-  );
-};
+  )
+}
 
-export default HabitTracker;

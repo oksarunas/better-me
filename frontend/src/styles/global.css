@@ -8,6 +8,10 @@
     --text-secondary: #b3b3b3;        /* Subtle text color */
     --box-shadow: 0 2px 8px rgba(0, 0, 0, 0.7); /* Darker shadow on dark theme */
 }
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
 
 /* Global Styles */
 body {
