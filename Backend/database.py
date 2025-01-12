@@ -1,43 +1,60 @@
 import os
 import logging
+from contextlib import asynccontextmanager
+from typing import AsyncGenerator
+
 from dotenv import load_dotenv
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.orm import sessionmaker
+from sqlalchemy.exc import SQLAlchemyError
+from sqlalchemy.orm import declarative_base
 
 # Initialize logging
 logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
-# Load environment variables from a .env file
+# Load environment variables
 load_dotenv()
 
-# Database configuration
+# Database URL
 DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///progress.db")
-engine = create_async_engine(DATABASE_URL, connect_args={"check_same_thread": False})
-async_session = sessionmaker(autocommit=False, autoflush=False, bind=engine, class_=AsyncSession)
+
+# Create async engine
+engine = create_async_engine(DATABASE_URL, echo=True)
+
+# Create session factory
+async_session_maker = sessionmaker(
+    bind=engine,
+    class_=AsyncSession,
+    expire_on_commit=False
+)
 
 # Base class for models
 Base = declarative_base()
 
 # Initialize database
-async def init_db():
-    """
-    Initialize the database by creating tables based on models.
-    """
+async def init_db() -> None:
     try:
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
-        logging.info("Database initialized successfully.")
-    except Exception as e:
-        logging.error(f"Error initializing database: {e}")
+            logger.info("Database initialized successfully")
+    except SQLAlchemyError as e:
+        logger.error(f"Database initialization error: {str(e)}")
         raise
 
-# Dependency to get a database session
-async def get_db():
-    """
-    Dependency to provide a database session for FastAPI routes.
-    """
-    async with async_session() as session:
-        try:
-            yield session
-        finally:
-            await session.close()
+# Dependency for FastAPI
+@asynccontextmanager
+async def get_db_session() -> AsyncGenerator[AsyncSession, None]:
+    session = async_session_maker()
+    try:
+        yield session
+    except SQLAlchemyError as e:
+        logger.error(f"Session error: {str(e)}")
+        await session.rollback()
+        raise
+    finally:
+        await session.close()
+
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
+    async with get_db_session() as session:
+        yield session

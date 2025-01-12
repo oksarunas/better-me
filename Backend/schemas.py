@@ -2,7 +2,6 @@ from pydantic import BaseModel, field_validator
 from datetime import date
 from typing import List
 
-
 # Base schema for progress (common fields)
 class ProgressBase(BaseModel):
     date: date
@@ -22,11 +21,9 @@ class ProgressBase(BaseModel):
             raise ValueError(f"Habit '{value}' is not valid.")
         return value
 
-
 # Schema for creating new progress
 class ProgressCreate(ProgressBase):
     pass
-
 
 # Schema for reading progress from the database
 class ProgressRead(ProgressBase):
@@ -34,8 +31,7 @@ class ProgressRead(ProgressBase):
     streak: int = 0
 
     class Config:
-        from_attributes = True  # Updated for Pydantic v2
-
+        from_attributes = True  # For Pydantic v2.x compatibility
 
 # Schema for bulk updates
 class BulkUpdate(BaseModel):
