@@ -11,8 +11,12 @@ const HabitTracker = () => {
     const fetchHabits = async () => {
       setLoading(true);
       setError(null); // Reset error state before fetching
+
+      // Get today's date in YYYY-MM-DD format
+      const today = new Date().toISOString().split('T')[0];
+
       try {
-        const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/progress`);
+        const response = await fetch(`${process.env.REACT_APP_API_BASE_URL}/progress/${today}`);
         if (!response.ok) {
           throw new Error(`Error: ${response.statusText}`);
         }
