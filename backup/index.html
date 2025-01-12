@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Daily Progress Tracker</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="icon" href="favicon.ico" type="image/x-icon">
+</head>
+<body>
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <h1>Daily Progress Tracker</h1>
+            <!-- Theme Toggle Button -->
+            <div id="theme-toggle-container">
+                <button id="theme-toggle" class="btn" aria-label="Toggle theme">Dark Mode</button>
+            </div>
+        </header>
+
+        <!-- Date Selector -->
+        <section id="date-selector">
+            <label for="progress-date">Select Date:</label>
+            <input type="date" id="progress-date" />
+        </section>
+
+        <!-- Date Navigation -->
+        <div id="date-navigation">
+            <button id="prev-date" class="btn" aria-label="Navigate to previous date">Previous</button>
+            <button id="next-date" class="btn" aria-label="Navigate to next date">Next</button>
+        </div>
+
+        <!-- Loading State -->
+        <div id="loading" style="display: none;">
+            <span>Loading...</span>
+        </div>
+
+        <!-- Progress List -->
+        <section id="progress-list">
+            <!-- Habit cards will be dynamically added here -->
+        </section>
+
+        <!-- Summary Section -->
+        <section id="summary">
+            <h2>Today's Summary</h2>
+            <p id="completed-count">Completed: 0 / 8</p>
+            <p id="completion-percentage">Completion: 0%</p>
+        </section>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <p>© 2025 Daily Progress Tracker. Built with ❤️.</p>
+    </footer>
+
+    <!-- Habit Template -->
+    <template id="habit-template">
+        <div class="habit">
+            <div>
+                <span class="habit-name">[Habit Name]</span>
+                <div class="streak-progress">
+                    <div class="streak-progress-fill" style="width: 0%;"></div>
+                </div>
+            </div>
+            <div>
+                <span class="streak-badge">0</span>
+                <label class="switch">
+                    <input type="checkbox">
+                    <span class="slider"></span>
+                </label>
+            </div>
+        </div>
+    </template>
+
+    <script src="script.js"></script>
+</body>
+</html>

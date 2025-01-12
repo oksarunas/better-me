@@ -1,0 +1,43 @@
+.landing-page {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  min-height: 100vh;
+  background-color: #121212;
+  color: #f4f4f4;
+  padding: 20px;
+}
+
+.landing-title {
+  font-size: 2.5rem;
+  margin-bottom: 20px;
+  color: #BB86FC; /* Primary accent color */
+}
+
+.landing-description {
+  font-size: 1.2rem;
+  margin-bottom: 30px;
+  color: #b3b3b3; /* Subtle text color */
+}
+
+.cta-button {
+  background-color: #03dac6; /* Secondary accent color */
+  color: #121212;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 5px;
+  font-size: 1rem;
+  cursor: pointer;
+  transition: background-color 0.3s ease, transform 0.2s ease;
+}
+
+.cta-button:hover {
+  background-color: #02c7b3; /* Slightly darker variant */
+  transform: scale(1.05);
+}
+
+.cta-button:active {
+  transform: scale(1);
+}
