@@ -1,33 +1,36 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# --- Python --- 
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
 
-# =======================
-# General
-# =======================
-.DS_Store
+# Virtual environment
+venv/
+.venv/
+
+# Test / coverage reports
+coverage/
+.coverage
+htmlcov/
+
+# Misc
 *.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
+*.env
+*.sqlite3
+db.sqlite3
 
-# =======================
-# Node.js (Frontend)
-# =======================
-/node_modules/
-/.pnp
+# --- Node/Frontend ---
+node_modules/
+dist/
+build/
+*.log
+
+# If you're using Yarn PnP, you might ignore .pnp & .pnp.js if you don’t commit those
+.pnp*
 .pnp.js
-/coverage
-/build
 
-# Environment files
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
-# =======================
-# Python (Backend)
-# =======================
-/venv/                  # Virtual environment folder
-__pycache__/            # Python cache files
-*.db                    # Database files
+# --- OS / Editor-specific ---
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
