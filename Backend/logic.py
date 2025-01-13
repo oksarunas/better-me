@@ -1,360 +1,127 @@
-# logic.py
-
-import logging
+from datetime import datetime, timedelta, date
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.sql import text
-from schemas import ProgressCreate, BulkUpdate, ProgressRead
 from typing import List
-from datetime import date
+import logging
 
-def log_error(error_message: str):
-    """Logs an error with a standardized format."""
-    logging.error(f"[LOGIC ERROR]: {error_message}")
+logger = logging.getLogger(__name__)
 
+from models import (
+    fetch_progress_by_date_and_habit,
+    fetch_all_progress_by_date,
+    update_progress_status,
+    fetch_all_habits,
+)
+from schemas import ProgressCreate, ProgressRead, BulkUpdate, ALLOWED_HABITS
 
-# -----------------------------------------------------------------
-# 1. Helper functions to fetch data from DB (no streak calculation)
-# -----------------------------------------------------------------
-
-async def fetch_progress_by_date_and_habit(db: AsyncSession, date: date, habit: str):
-    """
-    Fetch a progress record for a specific date and habit.
-    Returns None if not found.
-    """
+async def update_progress(progress: ProgressCreate, db: AsyncSession) -> None:
+    """Update progress for a specific habit and date."""
+    if progress.habit not in ALLOWED_HABITS:
+        raise ValueError(f"Invalid habit: {progress.habit}")
     try:
-        result = await db.execute(
-            text("""
-                SELECT id, date, habit, status, streak
-                FROM progress
-                WHERE date = :date AND habit = :habit
-            """),
-            {"date": date, "habit": habit}
+        await update_progress_status(
+            db=db,
+            date=progress.date,
+            habit=progress.habit,
+            status=progress.status
         )
-        return result.fetchone()
+        logger.info(f"Updated progress for {progress.habit} on {progress.date}")
     except Exception as e:
-        log_error(f"Error fetching progress for date={date}, habit={habit}: {e}")
-        return None
-
-
-async def fetch_all_progress_by_date(db: AsyncSession, date: date):
-    """
-    Fetch all progress records for a specific date, returning a dict keyed by habit.
-    Example: {"Breakfast": <Row>, "Workout": <Row>, ...}
-    """
-    try:
-        result = await db.execute(
-            text("""
-                SELECT id, date, habit, status, streak
-                FROM progress
-                WHERE date = :date
-            """),
-            {"date": date}
-        )
-        rows = result.fetchall()
-        return {row.habit: row for row in rows}
-    except Exception as e:
-        log_error(f"Error fetching all progress for date={date}: {e}")
-        return {}
-
-
-# -----------------------------------------------------------------
-# 2. Primary Endpoints
-# -----------------------------------------------------------------
-
-async def get_progress_by_date(date: date, db: AsyncSession, allowed_habits: List[str]) -> List[ProgressRead]:
-    """
-    Returns the progress for the specified date from the database.
-    Ensures each habit has a row for that date (status=False, streak=0 if missing).
-    Then returns the stored streak without recalculating it.
-    """
-    # 1) Fetch all progress for this date
-    records = await fetch_all_progress_by_date(db, date)
-
-    # 2) Insert missing habits with defaults if needed
-    existing_habits = set(records.keys())
-    missing_habits = [h for h in allowed_habits if h not in existing_habits]
-    if missing_habits:
-        for habit in missing_habits:
-            await db.execute(
-                text("""
-                    INSERT INTO progress (date, habit, status, streak)
-                    VALUES (:date, :habit, false, 0)
-                """),
-                {"date": date, "habit": habit}
-            )
-        await db.commit()
-        # Reload after insertion
-        records = await fetch_all_progress_by_date(db, date)
-
-    # 3) Build the result using DB's stored streak
-    progress_data = []
-    for habit in allowed_habits:
-        row = records.get(habit)
-        if row:
-            progress_data.append(
-                ProgressRead(
-                    id=row.id,
-                    date=row.date,
-                    habit=row.habit,
-                    status=row.status,
-                    streak=row.streak  # use DB value
-                )
-            )
-        else:
-            # Should not happen if we just inserted missing rows, but as a fallback:
-            progress_data.append(
-                ProgressRead(
-                    id=0,
-                    date=date,
-                    habit=habit,
-                    status=False,
-                    streak=0
-                )
-            )
-
-    return progress_data
-
-
-async def update_progress(progress: ProgressCreate, db: AsyncSession):
-    """
-    Updates a single habit's status for a given date, then recalculates
-    the streak for *all* dates of that habit in ascending order.
-    """
-    try:
-        # 1) Check if today's row exists
-        result = await db.execute(
-            text("""
-                SELECT id FROM progress
-                WHERE date = :date AND habit = :habit
-            """),
-            {"date": progress.date, "habit": progress.habit}
-        )
-        existing = result.fetchone()
-
-        # 2) Insert or Update today's row
-        if not existing:
-            await db.execute(
-                text("""
-                    INSERT INTO progress (date, habit, status, streak)
-                    VALUES (:date, :habit, :status, 0)
-                """),
-                {"date": progress.date, "habit": progress.habit, "status": progress.status}
-            )
-        else:
-            await db.execute(
-                text("""
-                    UPDATE progress
-                    SET status = :status
-                    WHERE date = :date AND habit = :habit
-                """),
-                {"status": progress.status, "date": progress.date, "habit": progress.habit}
-            )
-
-        # 3) Recompute streak for all rows of this habit
-        rows_result = await db.execute(
-            text("""
-                SELECT id, date, status
-                FROM progress
-                WHERE habit = :habit
-                ORDER BY date ASC
-            """),
-            {"habit": progress.habit}
-        )
-        rows = rows_result.fetchall()
-
-        streak_counter = 0
-        for row in rows:
-            db_id = row.id
-            db_status = row.status
-
-            # Convert to bool if needed (if row.status is bool, int, or str)
-            if isinstance(db_status, bool):
-                status_bool = db_status
-            elif isinstance(db_status, int):
-                status_bool = (db_status == 1)
-            elif isinstance(db_status, str):
-                status_bool = db_status.lower() in ["true", "1"]
-            else:
-                status_bool = False
-
-            if status_bool:
-                streak_counter += 1
-            else:
-                streak_counter = 0
-
-            await db.execute(
-                text("""
-                    UPDATE progress
-                    SET streak = :streak
-                    WHERE id = :id
-                """),
-                {"streak": streak_counter, "id": db_id}
-            )
-
-        # 4) Commit changes
-        await db.commit()
-
-    except Exception as e:
-        log_error(f"Error updating progress (habit={progress.habit}, date={progress.date}): {e}")
-        await db.rollback()
+        logger.error(f"Error updating progress for {progress.habit} on {progress.date}: {e}")
         raise
 
-
-async def bulk_update_progress(data: BulkUpdate, db: AsyncSession, allowed_habits: List[str]):
-    """
-    Bulk-updates multiple habits' statuses for a single date,
-    then recalculates streak for each changed habit.
-    """
+async def bulk_update_progress(data: BulkUpdate, db: AsyncSession, allowed_habits: List[str]) -> None:
+    """Bulk-update multiple habits for a specific date."""
     try:
-        updated_habits = set()
-
-        # 1) Update each habit's status or insert a new row if missing
-        for item in data.updates:
-            if item.habit not in allowed_habits:
-                logging.warning(f"Invalid habit in bulk update: {item.habit}")
-                continue
-
-            # Check if row exists
-            row_check = await db.execute(
-                text("""
-                    SELECT id FROM progress
-                    WHERE date = :date AND habit = :habit
-                """),
-                {"date": data.date, "habit": item.habit}
+        for update in data.updates:
+            if update.habit not in allowed_habits:
+                raise ValueError(f"Invalid habit: {update.habit}")
+            await update_progress_status(
+                db=db,
+                date=data.date,
+                habit=update.habit,
+                status=update.status
             )
-            existing = row_check.fetchone()
-
-            if not existing:
-                await db.execute(
-                    text("""
-                        INSERT INTO progress (date, habit, status, streak)
-                        VALUES (:date, :habit, :status, 0)
-                    """),
-                    {"date": data.date, "habit": item.habit, "status": item.status}
-                )
-            else:
-                await db.execute(
-                    text("""
-                        UPDATE progress
-                        SET status = :status
-                        WHERE date = :date AND habit = :habit
-                    """),
-                    {"status": item.status, "date": data.date, "habit": item.habit}
-                )
-
-            updated_habits.add(item.habit)
-
-        # 2) Recalculate streak for each habit that was updated
-        for habit in updated_habits:
-            rows_result = await db.execute(
-                text("""
-                    SELECT id, date, status
-                    FROM progress
-                    WHERE habit = :habit
-                    ORDER BY date ASC
-                """),
-                {"habit": habit}
-            )
-            rows = rows_result.fetchall()
-
-            streak_counter = 0
-            for row in rows:
-                db_id = row.id
-                db_status = row.status
-
-                if isinstance(db_status, bool):
-                    status_bool = db_status
-                elif isinstance(db_status, int):
-                    status_bool = (db_status == 1)
-                elif isinstance(db_status, str):
-                    status_bool = db_status.lower() in ["true", "1"]
-                else:
-                    status_bool = False
-
-                if status_bool:
-                    streak_counter += 1
-                else:
-                    streak_counter = 0
-
-                await db.execute(
-                    text("""
-                        UPDATE progress
-                        SET streak = :streak
-                        WHERE id = :id
-                    """),
-                    {"streak": streak_counter, "id": db_id}
-                )
-
-        await db.commit()
-
+        logger.info(f"Bulk update successful for date {data.date}")
     except Exception as e:
-        log_error(f"Error performing bulk update for date={data.date}: {e}")
-        await db.rollback()
+        logger.error(f"Bulk update failed for date {data.date}: {e}")
         raise
 
-
-# -----------------------------------------------------------------
-# 3. Maintenance: recalc_all_streaks
-# -----------------------------------------------------------------
-
-async def recalc_all_streaks(db: AsyncSession):
-    """
-    Recalculate streaks for EVERY habit in the database from day one to the latest entry.
-    Useful as a "maintenance" or "emergency" fix if data ever goes out of sync.
-    """
+async def get_progress_by_date(
+    date_obj: date,
+    db: AsyncSession,
+    allowed_habits: List[str],
+) -> List[ProgressRead]:
+    """Fetch progress for a single date."""
     try:
-        # 1) Fetch all distinct habits
-        habits_result = await db.execute(
-            text("SELECT DISTINCT habit FROM progress")
-        )
-        distinct_habits = [row[0] for row in habits_result.fetchall()]
+        rows = await fetch_all_progress_by_date(db, date_obj)
+        row_map = {r.habit: r for r in rows}
 
-        # 2) For each habit, fetch rows in ascending date order and recalc
-        for habit in distinct_habits:
-            rows_result = await db.execute(
-                text("""
-                    SELECT id, date, status
-                    FROM progress
-                    WHERE habit = :habit
-                    ORDER BY date ASC
-                """),
-                {"habit": habit}
-            )
-            rows = rows_result.fetchall()
-
-            streak_counter = 0
-            for row in rows:
-                db_id = row.id
-                db_status = row.status
-
-                # Convert to bool if needed
-                if isinstance(db_status, bool):
-                    status_bool = db_status
-                elif isinstance(db_status, int):
-                    status_bool = (db_status == 1)
-                elif isinstance(db_status, str):
-                    status_bool = db_status.lower() in ["true", "1"]
-                else:
-                    status_bool = False
-
-                if status_bool:
-                    streak_counter += 1
-                else:
-                    streak_counter = 0
-
-                await db.execute(
-                    text("""
-                        UPDATE progress
-                        SET streak = :streak
-                        WHERE id = :id
-                    """),
-                    {"streak": streak_counter, "id": db_id}
+        results = []
+        for habit in allowed_habits:
+            if habit in row_map:
+                row = row_map[habit]
+                results.append(
+                    ProgressRead(
+                        id=row.id,
+                        date=row.date,
+                        habit=habit,
+                        status=row.status,
+                        streak=row.streak
+                    )
                 )
-
-        await db.commit()
-        logging.info("All streaks have been recalculated successfully.")
-
+            else:
+                results.append(
+                    ProgressRead(
+                        id=0,
+                        date=date_obj,
+                        habit=habit,
+                        status=False,
+                        streak=0
+                    )
+                )
+        logger.info(f"Progress fetched for {date_obj}")
+        return results
     except Exception as e:
-        logging.error(f"Error while recalculating streaks: {e}")
-        await db.rollback()
+        logger.error(f"Error fetching progress for {date_obj}: {e}")
+        raise
+
+async def get_weekly_progress(db: AsyncSession, allowed_habits: List[str]) -> List[ProgressRead]:
+    """Fetch progress for the last 7 days."""
+    try:
+        today = date.today()
+        week_start = today - timedelta(days=6)
+
+        all_progress = []
+        rows = await fetch_all_progress_by_date(db, week_start, today)  # Fetch all in one query
+        row_map = {f"{r.date}_{r.habit}": r for r in rows}
+
+        for i in range(7):
+            current_date = week_start + timedelta(days=i)
+            for habit in allowed_habits:
+                key = f"{current_date}_{habit}"
+                if key in row_map:
+                    row = row_map[key]
+                    all_progress.append(
+                        ProgressRead(
+                            id=row.id,
+                            date=row.date,
+                            habit=habit,
+                            status=row.status,
+                            streak=row.streak
+                        )
+                    )
+                else:
+                    all_progress.append(
+                        ProgressRead(
+                            id=0,
+                            date=current_date,
+                            habit=habit,
+                            status=False,
+                            streak=0
+                        )
+                    )
+        logger.info("Weekly progress fetched successfully")
+        return all_progress
+    except Exception as e:
+        logger.error(f"Error fetching weekly progress: {e}")
         raise

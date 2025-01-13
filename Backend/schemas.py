@@ -1,39 +1,110 @@
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, validator
 from datetime import date
 from typing import List
 
-# Base schema for progress (common fields)
+from enum import Enum
+
+class HabitEnum(str, Enum):
+    SEVEN_HOURS_SLEEP = "7 hours of sleep"
+    BREAKFAST = "Breakfast"
+    WORKOUT = "Workout"
+    CODE = "Code"
+    CREATINE = "Creatine"
+    READ = "Read"
+    VITAMINS = "Vitamins"
+    NO_DRINK = "No drink"
+
+    @classmethod
+    def list_values(cls):
+        return [habit.value for habit in cls]
+
+
 class ProgressBase(BaseModel):
     date: date
     habit: str
     status: bool
 
-    @field_validator("habit", mode="before")
+    class Config:
+        from_attributes = True
+
+    @validator("habit")
     def validate_habit(cls, value):
-        """
-        Ensure the habit is valid. Replace 'ALLOWED_HABITS' with the global list if needed.
-        """
-        ALLOWED_HABITS = [
-            "7 hours of sleep", "Breakfast", "Workout", "Code",
-            "Creatine", "Read", "Vitamins", "No drink",
+        allowed_habits = [
+            "7 hours of sleep",
+            "Breakfast",
+            "Workout",
+            "Code",
+            "Creatine",
+            "Read",
+            "Vitamins",
+            "No drink",
         ]
-        if value not in ALLOWED_HABITS:
-            raise ValueError(f"Habit '{value}' is not valid.")
+        if value not in allowed_habits:
+            raise ValueError(f"'{value}' is not an allowed habit.")
         return value
 
-# Schema for creating new progress
+
 class ProgressCreate(ProgressBase):
     pass
 
-# Schema for reading progress from the database
+
 class ProgressRead(ProgressBase):
     id: int
     streak: int = 0
 
     class Config:
-        from_attributes = True  # For Pydantic v2.x compatibility
+        json_schema_extra = {
+            "example": {
+                "id": 1,
+                "date": "2025-01-01",
+                "habit": "Workout",
+                "status": True,
+                "streak": 5,
+            }
+        }
 
-# Schema for bulk updates
+
+
+class ProgressUpdate(BaseModel):
+    habit: str
+    status: bool
+
+    @validator("habit")
+    def validate_habit(cls, value):
+        allowed_habits = [
+            "7 hours of sleep",
+            "Breakfast",
+            "Workout",
+            "Code",
+            "Creatine",
+            "Read",
+            "Vitamins",
+            "No drink",
+        ]
+        if value not in allowed_habits:
+            raise ValueError(f"'{value}' is not an allowed habit.")
+        return value
+
+
 class BulkUpdate(BaseModel):
     date: date
-    updates: List[ProgressBase]
+    updates: List[ProgressUpdate]
+
+    @validator("date")
+    def validate_date(cls, value):
+        if value > date.today():
+            raise ValueError("Date cannot be in the future.")
+        return value
+
+
+# Constants
+ALLOWED_HABITS = [
+    "7 hours of sleep",
+    "Breakfast",
+    "Workout",
+    "Code",
+    "Creatine",
+    "Read",
+    "Vitamins",
+    "No drink",
+]
