@@ -1,12 +1,13 @@
 import React from "react";
-import AppRoutes from "./routes/AppRoutes";
-import "./styles/global.css";
+import AppRoutes from "./routes/AppRoutes"; // Centralized routing component
+import "./styles/global.css"; // Global styles
 
+// Root application component
 const App = () => {
     return (
-        <div className="App">
+        <main className="App">
             <AppRoutes />
-        </div>
+        </main>
     );
 };
 

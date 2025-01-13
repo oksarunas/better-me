@@ -1,11 +1,15 @@
+// Import React and ReactDOM for React 18+
 import React from 'react';
-import ReactDOM from 'react-dom/client'; // Updated import for React 18+
-import './styles/global.css'; // Import global styles
-import App from './App'; // Import the root App component
+import ReactDOM from 'react-dom/client';
 
-// Create the root and render the app
-const root = ReactDOM.createRoot(document.getElementById('root'));
-root.render(
+// Import global styles
+import './styles/global.css';
+
+// Import the root App component
+import App from './App';
+
+// Create and render the root of the application
+ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
     <App />
   </React.StrictMode>

@@ -7,8 +7,11 @@ const AppRoutes = () => {
   return (
     <Router>
       <Routes>
+        {/* Define routes with their respective components */}
         <Route path="/" element={<LandingPage />} />
         <Route path="/tracker" element={<HabitTracker />} />
+        {/* Add a fallback for undefined routes */}
+        <Route path="*" element={<div>404 - Page Not Found</div>} />
       </Routes>
     </Router>
   );

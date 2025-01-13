@@ -3,6 +3,8 @@ import { Link } from 'react-router-dom';
 import { Button } from "../ui/Button";
 import { Card, CardContent } from "../ui/Card";
 import { ArrowRight, CheckCircle, LineChart, Zap } from 'lucide-react';
+import '../../styles/components/LandingPage.css';
+
 
 const LandingPage = () => {
   return (
