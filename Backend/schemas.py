@@ -1,10 +1,11 @@
 from pydantic import BaseModel, validator
 from datetime import date
 from typing import List
-
 from enum import Enum
 
+
 class HabitEnum(str, Enum):
+    """Enumeration for allowed habits."""
     SEVEN_HOURS_SLEEP = "7 hours of sleep"
     BREAKFAST = "Breakfast"
     WORKOUT = "Workout"
@@ -16,39 +17,34 @@ class HabitEnum(str, Enum):
 
     @classmethod
     def list_values(cls):
+        """Return all habit values as a list."""
         return [habit.value for habit in cls]
 
 
 class ProgressBase(BaseModel):
+    """Base schema for progress."""
     date: date
-    habit: str
+    habit: HabitEnum
     status: bool
 
     class Config:
         from_attributes = True
 
-    @validator("habit")
-    def validate_habit(cls, value):
-        allowed_habits = [
-            "7 hours of sleep",
-            "Breakfast",
-            "Workout",
-            "Code",
-            "Creatine",
-            "Read",
-            "Vitamins",
-            "No drink",
-        ]
-        if value not in allowed_habits:
-            raise ValueError(f"'{value}' is not an allowed habit.")
+    @validator("date")
+    def validate_date(cls, value):
+        """Ensure date is not in the future."""
+        if value > date.today():
+            raise ValueError("Date cannot be in the future.")
         return value
 
 
 class ProgressCreate(ProgressBase):
+    """Schema for creating progress."""
     pass
 
 
 class ProgressRead(ProgressBase):
+    """Schema for reading progress."""
     id: int
     streak: int = 0
 
@@ -64,47 +60,24 @@ class ProgressRead(ProgressBase):
         }
 
 
-
 class ProgressUpdate(BaseModel):
-    habit: str
+    """Schema for updating progress."""
+    habit: HabitEnum
     status: bool
-
-    @validator("habit")
-    def validate_habit(cls, value):
-        allowed_habits = [
-            "7 hours of sleep",
-            "Breakfast",
-            "Workout",
-            "Code",
-            "Creatine",
-            "Read",
-            "Vitamins",
-            "No drink",
-        ]
-        if value not in allowed_habits:
-            raise ValueError(f"'{value}' is not an allowed habit.")
-        return value
 
 
 class BulkUpdate(BaseModel):
+    """Schema for bulk updating progress."""
     date: date
     updates: List[ProgressUpdate]
 
     @validator("date")
     def validate_date(cls, value):
+        """Ensure date is not in the future."""
         if value > date.today():
             raise ValueError("Date cannot be in the future.")
         return value
 
 
-# Constants
-ALLOWED_HABITS = [
-    "7 hours of sleep",
-    "Breakfast",
-    "Workout",
-    "Code",
-    "Creatine",
-    "Read",
-    "Vitamins",
-    "No drink",
-]
+# Constants (if needed in other modules)
+ALLOWED_HABITS = HabitEnum.list_values()

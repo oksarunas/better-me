@@ -1,12 +1,22 @@
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import text
 
+
 async def recalculate_streaks_for_habit(db: AsyncSession, habit: str) -> None:
     """
-    Recalculate streaks for a specific habit using window functions.
+    Recalculate streaks for a specific habit.
+
+    This function updates the streak column for all records of a specific habit
+    using SQL window functions to calculate consecutive streaks.
+
+    Args:
+        db: AsyncSession - Database session
+        habit: str - Name of the habit to recalculate streaks for
+
+    Raises:
+        RuntimeError: If the database operation fails
     """
     try:
-        # Update streaks using a window function
         await db.execute(
             text("""
                 WITH habit_data AS (
@@ -44,15 +54,23 @@ async def recalculate_streaks_for_habit(db: AsyncSession, habit: str) -> None:
         await db.commit()
     except Exception as e:
         await db.rollback()
-        raise RuntimeError(f"Error recalculating streaks for habit={habit}: {e}")
+        raise RuntimeError(f"Error recalculating streaks for habit '{habit}': {e}")
 
 
 async def recalculate_all_streaks(db: AsyncSession) -> None:
     """
-    Recalculate streaks for all habits using fewer queries and window functions.
+    Recalculate streaks for all habits.
+
+    This function updates the streak column for all habits in the progress table
+    using SQL window functions to calculate consecutive streaks.
+
+    Args:
+        db: AsyncSession - Database session
+
+    Raises:
+        RuntimeError: If the database operation fails
     """
     try:
-        # Update streaks for all habits using a similar logic
         await db.execute(
             text("""
                 WITH habit_data AS (
