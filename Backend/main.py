@@ -10,8 +10,9 @@ from logic import (
     update_progress,
     bulk_update_progress,
     get_weekly_progress,
+    update_progress_status,
 )
-from schemas import ProgressRead, ProgressCreate, BulkUpdate
+from schemas import ProgressRead, ProgressCreate, BulkUpdate, ProgressUpdate
 from database import get_db
 from health import health_router
 from application_status import ApplicationStatus
@@ -79,6 +80,30 @@ async def post_bulk_progress(data: BulkUpdate, db: AsyncSession = Depends(get_db
     logger.info(f"Bulk updating progress for date: {data.date}")
     updated_count = await bulk_update_progress(data, db, Config.ALLOWED_HABITS)
     return {"message": f"{updated_count} progress records updated successfully."}
+
+@progress_router.patch("/{habit_id}", response_model=ProgressRead)
+async def update_progress_by_id(
+    habit_id: int,
+    progress_update: ProgressUpdate,  # Updated schema
+    db: AsyncSession = Depends(get_db),
+):
+    """
+    Update progress for a specific habit by ID.
+    """
+    logger.info(f"Incoming PATCH request for habit ID {habit_id} with data: {progress_update}")
+    try:
+        updated_progress = await update_progress_status(
+            db=db,
+            habit_id=habit_id,
+            status=progress_update.status,
+        )
+        if not updated_progress:
+            raise HTTPException(status_code=404, detail="Habit not found.")
+        return updated_progress
+    except Exception as e:
+        logger.error(f"Error updating habit ID {habit_id}: {str(e)}")
+        raise HTTPException(status_code=500, detail="Failed to update habit.")
+
 
 # Include Health Router
 app.include_router(health_router)

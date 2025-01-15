@@ -3,6 +3,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 from fastapi import HTTPException
 import logging
+from typing import List, Optional
+from sqlalchemy.sql import text
+
+
 
 logger = logging.getLogger(__name__)
 
@@ -34,20 +38,25 @@ async def update_progress(progress: ProgressCreate, db: AsyncSession) -> None:
 
 async def bulk_update_progress(data: BulkUpdate, db: AsyncSession, allowed_habits: List[str]) -> None:
     """Bulk-update multiple habits for a specific date."""
-    try:
-        invalid_habits = [
-            update.habit for update in data.updates if update.habit not in allowed_habits
-        ]
-        if invalid_habits:
-            raise HTTPException(status_code=400, detail=f"Invalid habits: {invalid_habits}")
+    invalid_habits = [update.habit for update in data.updates if update.habit not in allowed_habits]
+    if invalid_habits:
+        raise HTTPException(status_code=400, detail=f"Invalid habits: {invalid_habits}")
 
-        for update in data.updates:
-            await update_progress_status(
-                db=db,
-                date=data.date,
-                habit=update.habit,
-                status=update.status,
-            )
+    try:
+        updates = [
+            {"date": data.date, "habit": update.habit, "status": update.status}
+            for update in data.updates
+        ]
+        await db.execute(
+            text("""
+                INSERT INTO progress (date, habit, status, streak)
+                VALUES (:date, :habit, :status, 0)
+                ON CONFLICT (date, habit) DO UPDATE
+                SET status = EXCLUDED.status
+            """),
+            updates,
+        )
+        await db.commit()
         logger.info(f"Bulk update successful for date {data.date}")
     except Exception as e:
         logger.error(f"Bulk update failed for date {data.date}: {e}")
@@ -91,16 +100,9 @@ async def get_weekly_progress(db: AsyncSession, allowed_habits: List[str]) -> Li
         row_map = {f"{r.date}_{r.habit}": r for r in rows}
 
         all_progress = [
-            ProgressRead(
-                id=row_map[key].id if key in row_map else 0,
-                date=row_map[key].date if key in row_map else week_start + timedelta(days=i),
-                habit=habit,
-                status=row_map[key].status if key in row_map else False,
-                streak=row_map[key].streak if key in row_map else 0,
-            )
+            build_progress_row(row_map, week_start + timedelta(days=i), habit)
             for i in range(7)
             for habit in allowed_habits
-            for key in [f"{week_start + timedelta(days=i)}_{habit}"]
         ]
 
         logger.info("Weekly progress fetched successfully")
@@ -108,3 +110,73 @@ async def get_weekly_progress(db: AsyncSession, allowed_habits: List[str]) -> Li
     except Exception as e:
         logger.error(f"Error fetching weekly progress: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch weekly progress")
+
+async def update_progress_status(db: AsyncSession, habit_id: int, status: bool) -> Optional[ProgressRead]:
+    """
+    Update the status of a habit by its ID.
+    """
+    try:
+        result = await db.execute(
+            text("""
+                UPDATE progress
+                SET status = :status
+                WHERE id = :habit_id
+                RETURNING id, date, habit, status, streak
+            """),
+            {"status": status, "habit_id": habit_id},
+        )
+        row = result.fetchone()
+        if not row:
+            return None
+        await db.commit()
+        return ProgressRead(
+            id=row.id, date=row.date, habit=row.habit, status=row.status, streak=row.streak
+        )
+    except Exception as e:
+        await db.rollback()
+        logger.error(f"Error updating habit ID {habit_id}: {str(e)}")
+        raise
+
+
+async def recalc_all_streaks(db: AsyncSession) -> None:
+    """
+    Recalculate streaks for all habits in the database.
+    """
+    try:
+        logger.info("Starting streak recalculation for all habits...")
+
+        await db.execute(
+            text("""
+                WITH ranked_data AS (
+                    SELECT
+                        id,
+                        habit,
+                        date,
+                        status,
+                        CASE
+                            WHEN status THEN
+                                ROW_NUMBER() OVER (PARTITION BY habit ORDER BY date)
+                                - ROW_NUMBER() OVER (PARTITION BY habit, status ORDER BY date)
+                            ELSE NULL
+                        END AS streak_group
+                    FROM progress
+                ),
+                streak_updates AS (
+                    SELECT
+                        id,
+                        COALESCE(COUNT(*) OVER (PARTITION BY habit, streak_group), 0) AS calculated_streak
+                    FROM ranked_data
+                    WHERE streak_group IS NOT NULL
+                )
+                UPDATE progress
+                SET streak = streak_updates.calculated_streak
+                FROM streak_updates
+                WHERE progress.id = streak_updates.id;
+            """)
+        )
+        await db.commit()
+        logger.info("Streak recalculation completed successfully.")
+    except Exception as e:
+        await db.rollback()
+        logger.error(f"Error during streak recalculation: {e}")
+        raise

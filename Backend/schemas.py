@@ -61,8 +61,6 @@ class ProgressRead(ProgressBase):
 
 
 class ProgressUpdate(BaseModel):
-    """Schema for updating progress."""
-    habit: HabitEnum
     status: bool
 
 
