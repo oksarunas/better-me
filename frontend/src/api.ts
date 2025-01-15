@@ -1,5 +1,6 @@
-const apiUrl = process.env.REACT_APP_API_BASE_URL || "http://localhost:8001"; // Fallback for development
 
+import { WeeklyData, RawHabit } from './types';
+const apiUrl = process.env.REACT_APP_API_BASE_URL || "http://localhost:8001"; // Fallback for development
 /**
  * Generic function to fetch data from the API.
  * @param endpoint - The API endpoint to call.
@@ -57,9 +58,26 @@ export async function updateHabitApi(
 }
 
 /**
- * Fetch weekly habits data.
+ * Fetch weekly habits data and process it into a structured format.
  * @returns The weekly habits data.
  */
-export async function fetchWeeklyHabitsApi(): Promise<any> {
-    return apiFetch<any>("/progress/weekly");
+export async function fetchWeeklyHabitsApi(): Promise<WeeklyData[]> {
+    const rawData = await apiFetch<RawHabit[]>('/progress/weekly');
+
+    const processedData: WeeklyData[] = rawData.reduce((acc, item: RawHabit) => {
+        const existingDay = acc.find(entry => entry.date === item.date);
+        if (existingDay) {
+            existingDay.completed += item.status ? 1 : 0;
+            existingDay.total += 1;
+        } else {
+            acc.push({
+                date: item.date,
+                completed: item.status ? 1 : 0,
+                total: 1,
+            });
+        }
+        return acc;
+    }, [] as WeeklyData[]);
+
+    return processedData;
 }

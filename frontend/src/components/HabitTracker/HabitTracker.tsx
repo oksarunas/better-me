@@ -1,109 +1,170 @@
-import React, { useState, useEffect } from "react";
-import HabitList from "./HabitList";
-import HabitHeader from "./HabitHeader";
-import HabitChart from "./HabitChart";
-import HabitProgressBar from "./HabitProgressBar";
-import { fetchHabitsApi, updateHabitApi, fetchWeeklyHabitsApi } from "../../api";
-import { toast } from "react-toastify";
-import "../../styles/HabitTracker.css";
-import { WeeklyData, Habit } from "../../types"; // Ensure you're using the same type
+'use client'
 
+import { useEffect, useState } from 'react'
+import { Calendar, Flame } from 'lucide-react'
+import { Progress } from "../../components/ui/Progress"
+import { Card } from "../../components/ui/Card"
+import Checkbox from "../../components/ui/Checkbox"
+import Badge from "../../components/ui/Badge"
+import { Habit, WeeklyData } from '../../types'
+import { fetchHabitsApi, updateHabitApi, fetchWeeklyHabitsApi } from '../../api'
+import { format, parseISO } from 'date-fns'
 
+export default function HabitTracker() {
+  const [habits, setHabits] = useState<Habit[]>([])
+  const [weeklyData, setWeeklyData] = useState<WeeklyData[]>([])
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
 
-const HabitTracker: React.FC = () => {
-  const [habits, setHabits] = useState<Habit[]>([]);
-  const [weeklyData, setWeeklyData] = useState<WeeklyData[]>([]);
-  const [dailyLoading, setDailyLoading] = useState(true);
-  const [weeklyLoading, setWeeklyLoading] = useState(true);
-  const [selectedDate, setSelectedDate] = useState(
-    new Date().toISOString().split("T")[0]
-  ); // Default to today
-
-  // Fetch daily habits
   useEffect(() => {
-    const fetchHabits = async () => {
-      setDailyLoading(true);
+    const fetchData = async () => {
       try {
-        const data: Habit[] = await fetchHabitsApi(selectedDate);
-        setHabits(data);
-        toast.success("Habits loaded successfully!");
-      } catch (err) {
-        console.error("Failed to fetch habits:", err);
-        toast.error("Unable to load habits. Please try again later.");
+        setLoading(true)
+        setError(null)
+        const date = new Date().toISOString().split('T')[0] // Get today's date in YYYY-MM-DD format
+        const [habitsData, weeklyDataResponse] = await Promise.all([
+          fetchHabitsApi(date),
+          fetchWeeklyHabitsApi(),
+        ])
+        setHabits(habitsData)
+        console.log(habitsData)
+        setWeeklyData(weeklyDataResponse)
+        console.log(weeklyDataResponse)
+      } catch (err: any) {
+        setError(err.message || 'Failed to fetch data')
       } finally {
-        setDailyLoading(false);
+        setLoading(false)
       }
-    };
-
-    fetchHabits();
-  }, [selectedDate]);
-
-  // Fetch weekly data
-  useEffect(() => {
-    const fetchWeeklyData = async () => {
-      setWeeklyLoading(true);
-      try {
-        const data: WeeklyData[] = await fetchWeeklyHabitsApi();
-        setWeeklyData(data);
-      } catch (err) {
-        console.error("Failed to fetch weekly data:", err);
-        toast.error("Unable to load weekly data. Please try again later.");
-      } finally {
-        setWeeklyLoading(false);
-      }
-    };
-
-    fetchWeeklyData();
-  }, []);
-
-  // Handle habit toggling
-  const onToggleHabit = async (habitId: number, newStatus: boolean) => {
-    if (habitId <= 0) {
-      console.error("Invalid habit ID:", habitId);
-      toast.error("Invalid habit. Please refresh the page.");
-      return;
     }
+    fetchData()
+  }, [])
+
+  const toggleHabit = async (id: number, currentStatus: boolean) => {
+    // Optimistically update the UI
+    const updatedHabits = habits.map(habit =>
+        habit.id === id
+            ? {
+                  ...habit,
+                  status: !currentStatus,
+                  streak: currentStatus ? habit.streak - 1 : habit.streak + 1,
+              }
+            : habit
+    );
+    setHabits(updatedHabits);
 
     try {
-      setHabits((prevHabits) =>
-        prevHabits.map((habit) =>
-          habit.id === habitId ? { ...habit, status: newStatus } : habit
-        )
-      );
-      await updateHabitApi(habitId, { status: newStatus });
-      toast.success("Habit status updated successfully!");
-    } catch (err) {
-      console.error("Error updating habit:", err);
-      toast.error("Failed to update habit. Please try again.");
-      setHabits((prevHabits) =>
-        prevHabits.map((habit) =>
-          habit.id === habitId ? { ...habit, status: !newStatus } : habit
-        )
-      );
+        // Make the API call to persist the change
+        await updateHabitApi(id, { status: !currentStatus });
+    } catch (err: any) {
+        console.error('Failed to update habit:', err);
+
+        // Revert the UI change if the API call fails
+        const revertedHabits = updatedHabits.map(habit =>
+            habit.id === id
+                ? {
+                      ...habit,
+                      status: currentStatus, // Revert to the previous status
+                      streak: currentStatus ? habit.streak + 1 : habit.streak - 1,
+                  }
+                : habit
+        );
+        setHabits(revertedHabits);
     }
-  };
-
-  const completedHabits = habits.filter((habit) => habit.status).length;
-  const totalHabits = habits.length;
-
-  if (dailyLoading || weeklyLoading) {
-    return <div>Loading...</div>;
-  }
-
-  return (
-    <div className="space-y-6">
-      <HabitHeader
-        selectedDate={selectedDate}
-        setSelectedDate={setSelectedDate}
-      />
-      <HabitProgressBar
-        completedHabits={completedHabits}
-        totalHabits={totalHabits}
-      />
-      <HabitChart weeklyData={weeklyData} />
-      <HabitList habits={habits} onToggleHabit={onToggleHabit} />
-    </div>
-  );
 };
 
-export default HabitTracker;
+
+  if (loading) {
+    return <div className="text-center text-gray-400">Loading...</div>
+  }
+
+  if (error) {
+    return <div className="text-center text-red-500">{error}</div>
+  }
+
+  const completedHabits = habits.filter(habit => habit.status).length
+  const totalHabits = habits.length
+  const progress = (completedHabits / totalHabits) * 100
+
+  return (
+    <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-950 p-6">
+      <div className="max-w-4xl mx-auto space-y-8">
+        <div className="flex items-center justify-between">
+          <div className="space-y-1">
+            <h1 className="text-2xl font-bold">My Habits</h1>
+            <p className="text-gray-400">
+              {completedHabits} of {totalHabits} Habits Completed
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Calendar className="h-5 w-5 text-gray-400" />
+            <span className="text-sm text-gray-400">
+              {new Date().toLocaleDateString()}
+            </span>
+          </div>
+        </div>
+
+        <Progress value={progress} className="h-2" />
+
+        <div className="grid gap-4 md:grid-cols-2">
+          {habits.map((habit) => (
+            <Card
+              key={habit.id}
+              className={`p-4 transition-all hover:shadow-lg ${
+                habit.status 
+                  ? 'bg-gray-900/50 border-gray-800' 
+                  : 'bg-gray-900/30 border-gray-800'
+              }`}
+            >
+              <div className="flex items-center space-x-4">
+                <Checkbox
+                  checked={habit.status}
+                  onCheckedChange={() => toggleHabit(habit.id, habit.status)}
+                  className="h-5 w-5 transition-all data-[state=checked]:bg-green-500"
+                />
+                <div className="flex-1">
+                  <span className="font-medium">{habit.habit}</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Badge 
+                    variant={habit.status ? 'default' : 'secondary'}
+                    className="transition-all"
+                  >
+                    <Flame className="h-4 w-4 mr-1 text-amber-500" />
+                    {habit.streak} days
+                  </Badge>
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+
+        <Card className="p-6 bg-gray-900/30 border-gray-800">
+          <h3 className="text-lg font-medium mb-4">Weekly Habit Completion Progress</h3>
+          <div className="h-32 flex items-end gap-2">
+            {weeklyData.map((data, i) => {
+              const percentage = (data.completed / data.total) * 100
+              return (
+                <div
+                  key={i}
+                  className="flex-1 bg-green-500/20 rounded-t relative group hover:bg-green-500/30 transition-all cursor-pointer"
+                  style={{ height: `${percentage}%` }}
+                >
+                  <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <Badge variant="outline">{Math.round(percentage)}%</Badge>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+          <div className="flex justify-between mt-2 text-sm text-gray-400">
+            {weeklyData.map(data => (
+              <span key={data.date}>
+                {format(parseISO(data.date), 'EEE')}
+              </span>
+            ))}
+          </div>  
+        </Card>
+      </div>
+    </div>
+  )
+}

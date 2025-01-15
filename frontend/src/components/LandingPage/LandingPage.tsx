@@ -1,8 +1,13 @@
 import { ArrowRight, CheckCircle, LineChart, Zap } from 'lucide-react';
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button } from "../../components/ui/Button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "../../components/ui/Card";
 
 const LandingPage = () => {
+
+  const navigate = useNavigate();
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-950">
       <main className="container mx-auto px-4 py-16 flex flex-col items-center">
@@ -14,7 +19,8 @@ const LandingPage = () => {
           <p className="text-xl md:text-2xl text-gray-400">
             Track your habits and build a better version of yourself, one day at a time.
           </p>
-          <Button size="lg" className="group">
+          <Button size="lg" className="group"
+            onClick={() => navigate("/tracker")}>
             Get Started
             <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
           </Button>

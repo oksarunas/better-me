@@ -12,6 +12,12 @@ export interface Habit {
   streak: number;
 }
 
+export interface RawHabit {
+  date: string;   // Date in YYYY-MM-DD format
+  status: boolean; // Whether the habit was completed
+}
+
+
 export interface HabitListProps {
   habits: Habit[];
   onToggleHabit: (habitId: number, newStatus: boolean) => void;
