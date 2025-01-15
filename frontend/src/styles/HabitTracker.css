@@ -1,0 +1,35 @@
+/* Header */
+.habit-header {
+  @apply text-center space-y-4 mb-8;
+}
+
+/* Progress Bar */
+.habit-progress-bar {
+  @apply bg-gray-700 h-4 rounded-full relative;
+}
+
+.habit-progress-bar-filled {
+  @apply bg-gradient-to-r from-blue-500 to-blue-700 h-full rounded-full transition-all;
+}
+
+/* Chart Container */
+.habit-chart-container {
+  @apply bg-card p-6 rounded-lg shadow-lg;
+}
+
+/* Habit List */
+.habit-list {
+  @apply grid grid-cols-1 md:grid-cols-2 gap-4;
+}
+
+.habit-card {
+  @apply bg-card p-4 rounded-lg shadow flex justify-between items-center;
+}
+
+.habit-completed {
+  @apply text-green-500 font-semibold;
+}
+
+.habit-streak {
+  @apply text-yellow-400 font-semibold;
+}

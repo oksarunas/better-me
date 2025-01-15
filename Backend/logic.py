@@ -5,6 +5,8 @@ from fastapi import HTTPException
 import logging
 from typing import List, Optional
 from sqlalchemy.sql import text
+from schemas import build_progress_row
+
 
 
 
@@ -93,23 +95,54 @@ async def get_progress_by_date(
 async def get_weekly_progress(db: AsyncSession, allowed_habits: List[str]) -> List[ProgressRead]:
     """Fetch progress for the last 7 days."""
     try:
+        # Calculate the date range (last 7 days)
         today = date.today()
         week_start = today - timedelta(days=6)
 
-        rows = await fetch_all_progress_by_date(db, week_start, today)  # Batch-fetch data
-        row_map = {f"{r.date}_{r.habit}": r for r in rows}
+        # Fetch all progress records in the date range
+        rows = await fetch_all_progress_by_date(db, week_start, today)
+        
+        # Log the fetched rows for debugging
+        logger.debug(f"Fetched rows: {rows}")
 
-        all_progress = [
-            build_progress_row(row_map, week_start + timedelta(days=i), habit)
-            for i in range(7)
-            for habit in allowed_habits
-        ]
+        # Map rows for quick access by (date, habit)
+        row_map = {
+            (row.date, row.habit): ProgressRead(
+                id=row.id,
+                date=row.date,
+                habit=row.habit,
+                status=row.status,
+                streak=row.streak,
+            )
+            for row in rows
+        }
+
+        # Build a complete list of progress entries for each day and habit
+        all_progress = []
+        for i in range(7):
+            current_date = week_start + timedelta(days=i)
+            for habit in allowed_habits:
+                # Use the mapped data or create a default row
+                key = (current_date, habit)
+                progress_row = row_map.get(
+                    key,
+                    ProgressRead(
+                        id=0,  # Default ID for missing rows
+                        date=current_date,
+                        habit=habit,
+                        status=False,
+                        streak=0,  # Default streak value
+                    ),
+                )
+                all_progress.append(progress_row)
 
         logger.info("Weekly progress fetched successfully")
         return all_progress
     except Exception as e:
+        # Log the detailed error and raise an HTTPException
         logger.error(f"Error fetching weekly progress: {e}")
-        raise HTTPException(status_code=500, detail="Failed to fetch weekly progress")
+        raise HTTPException(status_code=500, detail=f"Failed to fetch weekly progress: {str(e)}")
+
 
 async def update_progress_status(db: AsyncSession, habit_id: int, status: bool) -> Optional[ProgressRead]:
     """

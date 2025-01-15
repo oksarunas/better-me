@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 
-const Header = () => {
-  const [darkMode, setDarkMode] = useState(false);
+const Header: React.FC = () => {
+  const [darkMode, setDarkMode] = useState<boolean>(false);
 
   const toggleTheme = () => {
     setDarkMode(!darkMode);

@@ -1,4 +1,4 @@
-# --- Python --- 
+# --- Python ---
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -18,6 +18,7 @@ htmlcov/
 *.env
 *.sqlite3
 db.sqlite3
+*.db  # Added to ignore all .db files
 
 # --- Node/Frontend ---
 node_modules/

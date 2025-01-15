@@ -1,0 +1,33 @@
+/* Hero Section */
+.landing-hero {
+  @apply text-center py-12 bg-gradient-to-b from-gray-800 to-background text-white;
+}
+
+.landing-hero-title {
+  @apply text-5xl font-extrabold tracking-wide;
+}
+
+.landing-hero-subtitle {
+  @apply text-xl text-gray-300 mt-4;
+}
+
+.landing-hero-cta {
+  @apply bg-primary text-white px-6 py-3 rounded-lg shadow hover:bg-green-600 transition-all;
+}
+
+/* Features Section */
+.features-section {
+  @apply py-12 bg-background;
+}
+
+.feature-card {
+  @apply bg-gray-800 p-6 rounded-lg shadow hover:shadow-lg transition-all;
+}
+
+.feature-title {
+  @apply text-xl font-bold mb-2 text-primary;
+}
+
+.feature-description {
+  @apply text-gray-400;
+}

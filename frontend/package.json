@@ -3,23 +3,31 @@
   "version": "0.1.0",
   "private": true,
   "dependencies": {
+    "@radix-ui/react-progress": "^1.1.1",
+    "@radix-ui/react-slot": "^1.1.1",
+    "@types/react": "^19.0.7",
+    "@types/react-dom": "^19.0.3",
     "chart.js": "^4.4.7",
+    "class-variance-authority": "^0.7.1",
     "classnames": "^2.5.1",
+    "clsx": "^2.1.1",
     "cra-template": "1.2.0",
     "lucide-react": "^0.471.0",
-    "react": "^19.0.0",
+    "react": "^18.3.1",
     "react-chartjs-2": "^5.3.0",
     "react-confetti": "^6.2.2",
-    "react-dom": "^19.0.0",
-    "react-router-dom": "^7.1.1",
-    "react-scripts": "5.0.1",
-    "react-toastify": "^11.0.2",
+    "react-dom": "^18.3.1",
+    "react-router-dom": "^6.28.1",
+    "react-scripts": "^5.0.1",
+    "react-toastify": "^8.0.3",
     "react-tooltip": "^5.28.0",
+    "tailwind-merge": "^2.6.0",
+    "typescript": "^4.9.5",
     "web-vitals": "^4.2.4"
   },
   "scripts": {
-    "start": "react-scripts start",
-    "build": "react-scripts build",
+    "start": "NODE_OPTIONS=--openssl-legacy-provider react-scripts start",
+    "build": "NODE_OPTIONS=--openssl-legacy-provider react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
   },
@@ -42,8 +50,9 @@
     ]
   },
   "devDependencies": {
+    "@babel/plugin-proposal-private-property-in-object": "^7.21.11",
     "autoprefixer": "^10.4.20",
-    "postcss": "^8.4.49",
+    "postcss": "^8.5.1",
     "tailwindcss": "^3.4.17"
   }
 }

@@ -1,8 +1,9 @@
 import React, { useMemo } from "react";
+import { Habit, HabitListProps } from "../../types";
 
-function HabitList({ habits, onToggleHabit }) {
-  console.log("Habits received in HabitList:", habits); // Debug log
 
+
+const HabitList: React.FC<HabitListProps> = ({ habits, onToggleHabit }) => {
   // Memoize the rendering logic
   const renderedHabits = useMemo(() => {
     if (!habits || habits.length === 0) {
@@ -51,6 +52,6 @@ function HabitList({ habits, onToggleHabit }) {
   }, [habits, onToggleHabit]);
 
   return <div className="habit-list">{renderedHabits}</div>;
-}
+};
 
 export default React.memo(HabitList);

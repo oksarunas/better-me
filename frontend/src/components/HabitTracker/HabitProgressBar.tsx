@@ -1,7 +1,15 @@
 import React from "react";
-import { Progress } from "../ui/Progress";
+import { Progress } from "../../components/ui/Progress";
 
-export default function HabitProgressBar({ completedHabits, totalHabits }) {
+interface HabitProgressBarProps {
+  completedHabits: number;
+  totalHabits: number;
+}
+
+const HabitProgressBar: React.FC<HabitProgressBarProps> = ({
+  completedHabits,
+  totalHabits,
+}) => {
   const progress = totalHabits > 0 ? (completedHabits / totalHabits) * 100 : 0;
 
   return (
@@ -15,4 +23,6 @@ export default function HabitProgressBar({ completedHabits, totalHabits }) {
       <Progress value={progress} className="h-2" />
     </div>
   );
-}
+};
+
+export default HabitProgressBar;

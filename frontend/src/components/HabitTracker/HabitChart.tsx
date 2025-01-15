@@ -1,40 +1,55 @@
 import React from "react";
-import { Line } from "react-chartjs-2";
+import { Bar } from "react-chartjs-2";
 import {
   Chart as ChartJS,
   CategoryScale,
   LinearScale,
-  PointElement,
-  LineElement,
+  BarElement,
   Title,
   Tooltip,
   Legend,
 } from "chart.js";
+import { WeeklyData } from "../../types"; // Same type here
+
 
 // Register required components
 ChartJS.register(
   CategoryScale,
   LinearScale,
-  PointElement,
-  LineElement,
+  BarElement,
   Title,
   Tooltip,
   Legend
 );
 
-export default function HabitChart({ weeklyData }) {
+
+interface AggregatedData {
+  date: string;
+  completionPercentage: number;
+}
+
+interface HabitChartProps {
+  weeklyData: WeeklyData[];
+}
+
+const HabitChart: React.FC<HabitChartProps> = ({ weeklyData }) => {
+  console.log("Weekly Data:", weeklyData);
+
   // Aggregate data to calculate completion percentages
-  const aggregateWeeklyData = () => {
-    const groupedData = weeklyData.reduce((acc, item) => {
-      if (!acc[item.date]) {
-        acc[item.date] = { total: 0, completed: 0 };
-      }
-      acc[item.date].total += 1;
-      if (item.status) {
-        acc[item.date].completed += 1;
-      }
-      return acc;
-    }, {});
+  const aggregateWeeklyData = (): AggregatedData[] => {
+    const groupedData = weeklyData.reduce<Record<string, { total: number; completed: number }>>(
+      (acc, item) => {
+        if (!acc[item.date]) {
+          acc[item.date] = { total: 0, completed: 0 };
+        }
+        acc[item.date].total += 1;
+        if (item.status) {
+          acc[item.date].completed += 1;
+        }
+        return acc;
+      },
+      {}
+    );
 
     return Object.keys(groupedData).map((date) => ({
       date,
@@ -52,9 +67,9 @@ export default function HabitChart({ weeklyData }) {
       {
         label: "Completion Percentage",
         data: aggregatedData.map((day) => day.completionPercentage || 0),
+        backgroundColor: "rgba(76, 175, 80, 0.6)",
         borderColor: "#4caf50",
-        backgroundColor: "rgba(76, 175, 80, 0.2)",
-        tension: 0.4,
+        borderWidth: 1,
       },
     ],
   };
@@ -65,7 +80,7 @@ export default function HabitChart({ weeklyData }) {
     plugins: {
       legend: {
         display: true,
-        position: "top",
+        position: "top" as const,
       },
       title: {
         display: true,
@@ -80,7 +95,7 @@ export default function HabitChart({ weeklyData }) {
           autoSkip: true, // Show fewer labels
           maxTicksLimit: 4, // Limit number of labels
         },
-      },   
+      },
       y: {
         beginAtZero: true,
         max: 100,
@@ -95,10 +110,12 @@ export default function HabitChart({ weeklyData }) {
   return (
     <div className="mt-6" style={{ maxWidth: "800px", margin: "0 auto" }}>
       {weeklyData.length > 0 ? (
-        <Line data={chartData} options={chartOptions} />
+        <Bar data={chartData} options={chartOptions} />
       ) : (
         <p className="text-center text-gray-500">No weekly data available.</p>
       )}
     </div>
   );
-}
+};
+
+export default HabitChart;

@@ -1,11 +1,11 @@
 import React from "react";
-import AppRoutes from "./routes/AppRoutes"; // Centralized routing component
+import AppRoutes from "./AppRoutes"; // Centralized routing component
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css"; // Toast styles
 import "./styles/global.css"; // Global styles
 
 // Root application component
-const App = () => {
+const App: React.FC = () => {
     return (
         <main className="App">
             {/* Centralized routing */}

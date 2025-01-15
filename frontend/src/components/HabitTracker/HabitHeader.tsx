@@ -2,7 +2,15 @@ import React from "react";
 import { CalendarIcon } from "lucide-react";
 import { Button } from "../ui/Button";
 
-export default function HabitHeader({ selectedDate, setSelectedDate }) {
+interface HabitHeaderProps {
+  selectedDate: string;
+  setSelectedDate: (date: string) => void;
+}
+
+const HabitHeader: React.FC<HabitHeaderProps> = ({
+  selectedDate,
+  setSelectedDate,
+}) => {
   return (
     <div className="flex justify-between items-center">
       <h2 className="text-2xl font-bold">My Habits</h2>
@@ -17,4 +25,6 @@ export default function HabitHeader({ selectedDate, setSelectedDate }) {
       </Button>
     </div>
   );
-}
+};
+
+export default HabitHeader;
