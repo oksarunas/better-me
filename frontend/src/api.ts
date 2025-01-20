@@ -51,11 +51,16 @@ export async function updateHabitApi(
     habitId: number,
     body: Record<string, any>
 ): Promise<any> {
+    if (!habitId || habitId <= 0) {
+        throw new Error("Invalid habitId provided for updateHabitApi.");
+    }
+
     return apiFetch<any>(`/progress/${habitId}`, {
         method: "PATCH",
         body: JSON.stringify(body),
     });
 }
+
 
 /**
  * Fetch weekly habits data and process it into a structured format.

@@ -77,19 +77,24 @@ async def get_progress_by_date(
 
         results = [
             ProgressRead(
-                id=row_map[habit].id if habit in row_map else 0,
-                date=row_map[habit].date if habit in row_map else date_obj,
+                id=row_map[habit].id,  # Assume fix.py guarantees valid IDs
+                date=row_map[habit].date,
                 habit=habit,
-                status=row_map[habit].status if habit in row_map else False,
-                streak=row_map[habit].streak if habit in row_map else 0,
+                status=row_map[habit].status,
+                streak=row_map[habit].streak,
             )
             for habit in allowed_habits
         ]
+
         logger.info(f"Progress fetched for {date_obj}")
         return results
+    except KeyError as e:
+        logger.error(f"Missing habit data for {date_obj}: {e}")
+        raise HTTPException(status_code=500, detail=f"Missing habit data for {date_obj}")
     except Exception as e:
         logger.error(f"Error fetching progress for {date_obj}: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch progress")
+
 
 
 async def get_weekly_progress(db: AsyncSession, allowed_habits: List[str]) -> List[ProgressRead]:
