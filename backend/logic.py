@@ -149,31 +149,20 @@ async def get_weekly_progress(db: AsyncSession, allowed_habits: List[str]) -> Li
         raise HTTPException(status_code=500, detail=f"Failed to fetch weekly progress: {str(e)}")
 
 
-async def update_progress_status(db: AsyncSession, habit_id: int, status: bool) -> Optional[ProgressRead]:
+async def update_progress_status(db: AsyncSession, habit_id: int, status: bool):
     """
     Update the status of a habit by its ID.
     """
-    try:
-        result = await db.execute(
-            text("""
-                UPDATE progress
-                SET status = :status
-                WHERE id = :habit_id
-                RETURNING id, date, habit, status, streak
-            """),
-            {"status": status, "habit_id": habit_id},
-        )
-        row = result.fetchone()
-        if not row:
-            return None
+    result = await db.execute(
+        "UPDATE progress SET status = :status WHERE id = :habit_id RETURNING *",
+        {"status": status, "habit_id": habit_id},
+    )
+    updated_progress = result.fetchone()
+    if updated_progress:
         await db.commit()
-        return ProgressRead(
-            id=row.id, date=row.date, habit=row.habit, status=row.status, streak=row.streak
-        )
-    except Exception as e:
-        await db.rollback()
-        logger.error(f"Error updating habit ID {habit_id}: {str(e)}")
-        raise
+        return updated_progress
+    return None
+
 
 
 async def recalc_all_streaks(db: AsyncSession) -> None:

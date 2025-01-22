@@ -1,6 +1,6 @@
 from pydantic import BaseModel, validator
 from datetime import date
-from typing import List
+from typing import List, Optional
 from enum import Enum
 
 
@@ -61,7 +61,9 @@ class ProgressRead(ProgressBase):
 
 
 class ProgressUpdate(BaseModel):
-    status: bool
+    status: Optional[bool] = None
+    habit: Optional[str] = None  # Make this optional
+
 
 
 class BulkUpdate(BaseModel):

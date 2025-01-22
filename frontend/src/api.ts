@@ -1,5 +1,5 @@
 
-import { WeeklyData, RawHabit } from './types';
+import { WeeklyData, RawHabit, Habit } from './types';
 const apiUrl = process.env.REACT_APP_API_BASE_URL || "http://localhost:8001"; // Fallback for development
 /**
  * Generic function to fetch data from the API.
@@ -49,13 +49,13 @@ export async function fetchHabitsApi(date: string): Promise<any> {
  */
 export async function updateHabitApi(
     habitId: number,
-    body: Record<string, any>
-): Promise<any> {
+    body: Partial<Habit>
+): Promise<Habit> {
     if (!habitId || habitId <= 0) {
         throw new Error("Invalid habitId provided for updateHabitApi.");
     }
 
-    return apiFetch<any>(`/progress/${habitId}`, {
+    return apiFetch<Habit>(`/progress/${habitId}`, {
         method: "PATCH",
         body: JSON.stringify(body),
     });

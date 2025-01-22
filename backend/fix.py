@@ -24,47 +24,71 @@ async def fetch_all_habits(db) -> List[str]:
         raise
 
 
+from datetime import datetime, date, timedelta
+from database import async_session_maker, init_db
+from logic import recalc_all_streaks, bulk_update_progress
+from schemas import BulkUpdate, ProgressUpdate
+import logging
+
+logger = logging.getLogger(__name__)
+
 async def fill_missing_data(db, allowed_habits):
-    """Ensure all habits are present for every date in the database."""
+    """Ensure all habits are present for every date from the earliest DB date up to today."""
     try:
-        # Fetch all unique dates from the database
-        result = await db.execute("SELECT DISTINCT date FROM progress ORDER BY date")
-        dates = [row[0] for row in result.fetchall()]
+        # 1. Find the earliest date in the DB
+        result = await db.execute("SELECT MIN(date) FROM progress")
+        earliest_db_date = result.fetchone()[0]
+        
+        if earliest_db_date is None:
+            # If there's no data in the DB at all, start from today
+            earliest_db_date = date.today()
+        else:
+            # If earliest_db_date is a string, parse it
+            if isinstance(earliest_db_date, str):
+                # Adjust the format below if your DB string format is different
+                earliest_db_date = datetime.strptime(earliest_db_date, "%Y-%m-%d").date()
 
-        if not dates:
-            logger.info("No dates found in the database.")
-            return
+        # 2. Determine today's date
+        end_date = date.today()
 
-        # Iterate through each date and ensure all habits are present
-        for current_date in dates:
+        # 3. Iterate day by day from earliest_db_date to today
+        current_date = earliest_db_date
+        while current_date <= end_date:
             # Fetch existing habits for the current date
             existing_result = await db.execute(
-                "SELECT habit FROM progress WHERE date = :date", {"date": current_date}
+                "SELECT habit FROM progress WHERE date = :date",
+                {"date": current_date.isoformat()}  # pass as string if your DB column is text
             )
             existing_habits = {row[0] for row in existing_result.fetchall()}
 
             # Identify missing habits
             missing_habits = set(allowed_habits) - existing_habits
 
+            # If we have missing habits for this date, fill them
             if missing_habits:
-                # Prepare default entries for missing habits
                 updates = [
-                    ProgressUpdate(habit=habit, status=False) for habit in missing_habits
+                    ProgressUpdate(habit=habit, status=False)
+                    for habit in missing_habits
                 ]
-
-                # Create BulkUpdate object
                 bulk_data = BulkUpdate(date=current_date, updates=updates)
-
-                # Perform bulk update
-                await bulk_update_progress(data=bulk_data, db=db, allowed_habits=allowed_habits)
+                await bulk_update_progress(
+                    data=bulk_data,
+                    db=db,
+                    allowed_habits=allowed_habits
+                )
                 logger.info(f"Filled missing habits for date {current_date}.")
             else:
                 logger.info(f"All habits are already present for date {current_date}.")
+
+            # Move on to the next day
+            current_date += timedelta(days=1)
 
         logger.info("Finished checking and filling missing data for all dates.")
     except Exception as e:
         logger.error(f"Error while filling missing data: {e}")
         raise
+
+
 
 async def main():
     try:

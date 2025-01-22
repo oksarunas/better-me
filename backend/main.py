@@ -92,6 +92,7 @@ async def update_progress_by_id(
     """
     logger.info(f"Incoming PATCH request for habit ID {habit_id} with data: {progress_update}")
     try:
+        # Use the status directly from the request body
         updated_progress = await update_progress_status(
             db=db,
             habit_id=habit_id,
@@ -103,6 +104,7 @@ async def update_progress_by_id(
     except Exception as e:
         logger.error(f"Error updating habit ID {habit_id}: {str(e)}")
         raise HTTPException(status_code=500, detail="Failed to update habit.")
+
 
 
 # Include Health Router
