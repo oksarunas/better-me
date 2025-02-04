@@ -86,3 +86,15 @@ export async function fetchWeeklyHabitsApi(): Promise<WeeklyData[]> {
 
     return processedData;
 }
+/**
+ * POST the Google ID token to our backend to log in or sign up the user.
+ * @param idToken - The Google ID token received from the front-end
+ * @returns The user info or session token from your backend
+ */
+export async function googleSignInApi(idToken: string): Promise<any> {
+    return apiFetch<any>("/auth/google", {
+      method: "POST",
+      body: JSON.stringify({ id_token: idToken }),
+    });
+  }
+  

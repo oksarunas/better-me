@@ -1,119 +1,63 @@
-import uvicorn
+import os
 import logging
-from fastapi import FastAPI, APIRouter, Depends, HTTPException
+import uvicorn
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy.ext.asyncio import AsyncSession
-from datetime import datetime
-from config import Config
-from logic import (
-    get_progress_by_date,
-    update_progress,
-    bulk_update_progress,
-    get_weekly_progress,
-    update_progress_status,
-)
-from schemas import ProgressRead, ProgressCreate, BulkUpdate, ProgressUpdate
-from database import get_db
-from health import health_router
-from application_status import ApplicationStatus
 
+from database import init_db
+from routes import router  # Import the consolidated router
 
-# Initialize logging
-logger = logging.getLogger(__name__)
+# Configure logging
+logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
-# Initialize FastAPI app
+# Create FastAPI application
 app = FastAPI(
     title="Habit Tracker API",
     description="API for tracking daily habits and progress",
     version="1.0.0",
-    docs_url="/api/docs",
-    redoc_url="/api/redoc",
-    openapi_url="/api/openapi.json",
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json",
 )
 
-# CORS middleware
+# Configure allowed origins
+allow_origins = ["https://betterme.website"]
+if os.getenv("ENV") == "development":
+    allow_origins.append("http://localhost:3001")
+
+# Configure CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=Config.ALLOWED_ORIGINS,
+    allow_origins=allow_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# Progress Router
-progress_router = APIRouter(prefix="/progress", tags=["progress"])
+@app.get("/")
+async def root():
+    return {
+        "message": "Welcome to the Habit Tracker API",
+        "health_check": "/api/health",
+        "documentation": "/docs",
+    }
 
-@progress_router.get("/weekly", response_model=list[ProgressRead])
-async def get_weekly_progress_endpoint(db: AsyncSession = Depends(get_db)):
-    """
-    Fetch progress for the last 7 days for all allowed habits.
-    """
-    logger.info("Fetching weekly progress")
-    return await get_weekly_progress(db, Config.ALLOWED_HABITS)
+# Lifecycle events
+@app.on_event("startup")
+async def on_startup():
+    logging.info("Starting application...")
+    await init_db()
+    logging.info("Database initialized successfully.")
 
-@progress_router.get("/{date}", response_model=list[ProgressRead])
-async def get_progress(date: str, db: AsyncSession = Depends(get_db)):
-    """
-    Fetch progress for a specific date.
-    """
-    try:
-        parsed_date = datetime.strptime(date, "%Y-%m-%d").date()
-        logger.info(f"Fetching progress for date: {parsed_date}")
-    except ValueError:
-        logger.error(f"Invalid date format: {date}")
-        raise HTTPException(status_code=422, detail="Invalid date format. Expected YYYY-MM-DD.")
-    return await get_progress_by_date(parsed_date, db, Config.ALLOWED_HABITS)
+@app.on_event("shutdown")
+async def on_shutdown():
+    logging.info("Shutting down application...")
+    # Add cleanup logic here if needed
+    logging.info("Application shutdown complete.")
 
-@progress_router.post("/", status_code=201, response_model=ProgressRead)
-async def post_progress(progress: ProgressCreate, db: AsyncSession = Depends(get_db)):
-    """
-    Update progress for a specific habit and date.
-    """
-    logger.info(f"Updating progress: {progress}")
-    return await update_progress(progress, db)
+# Include the consolidated routes with a prefix
+app.include_router(router, prefix="/api")
 
-@progress_router.post("/bulk", status_code=201, response_model=dict)
-async def post_bulk_progress(data: BulkUpdate, db: AsyncSession = Depends(get_db)):
-    """
-    Bulk-update progress for multiple habits on a specific date.
-    """
-    logger.info(f"Bulk updating progress for date: {data.date}")
-    updated_count = await bulk_update_progress(data, db, Config.ALLOWED_HABITS)
-    return {"message": f"{updated_count} progress records updated successfully."}
-
-@progress_router.patch("/{habit_id}", response_model=ProgressRead)
-async def update_progress_by_id(
-    habit_id: int,
-    progress_update: ProgressUpdate,  # Updated schema
-    db: AsyncSession = Depends(get_db),
-):
-    """
-    Update progress for a specific habit by ID.
-    """
-    logger.info(f"Incoming PATCH request for habit ID {habit_id} with data: {progress_update}")
-    try:
-        # Use the status directly from the request body
-        updated_progress = await update_progress_status(
-            db=db,
-            habit_id=habit_id,
-            status=progress_update.status,
-        )
-        if not updated_progress:
-            raise HTTPException(status_code=404, detail="Habit not found.")
-        return updated_progress
-    except Exception as e:
-        logger.error(f"Error updating habit ID {habit_id}: {str(e)}")
-        raise HTTPException(status_code=500, detail="Failed to update habit.")
-
-
-
-# Include Health Router
-app.include_router(health_router)
-
-# Include Progress Router
-app.include_router(progress_router, prefix="/api")
-
-# Run the application
 if __name__ == "__main__":
-    logger.info(f"Starting server at {Config.HOST}:{Config.PORT} with debug={Config.DEBUG}")
-    uvicorn.run("main:app", host=Config.HOST, port=Config.PORT, reload=Config.DEBUG)
+    logging.info("Starting server...")
+    uvicorn.run("main:app", host="0.0.0.0", port=8001, reload=True)

@@ -1,23 +1,33 @@
 import logging
+import uuid
 from fastapi import Request
 from fastapi.responses import JSONResponse
 from fastapi.exceptions import RequestValidationError
-import uuid
+from typing import Any
 
 logger = logging.getLogger(__name__)
 
-async def validation_exception_handler(request: Request, exc: RequestValidationError):
+def generate_correlation_id() -> str:
+    """
+    Generate a unique correlation ID.
+    
+    Returns:
+        str: A new UUID string.
+    """
+    return str(uuid.uuid4())
+
+async def validation_exception_handler(request: Request, exc: RequestValidationError) -> JSONResponse:
     """
     Handle validation errors in FastAPI.
-
+    
     Args:
-        request: The incoming request object.
-        exc: The validation exception raised.
-
+        request (Request): The incoming request object.
+        exc (RequestValidationError): The validation exception raised.
+    
     Returns:
         JSONResponse: A response with validation error details.
     """
-    correlation_id = str(uuid.uuid4())  # Generate a unique correlation ID
+    correlation_id: str = generate_correlation_id()
     logger.warning(
         f"Validation error: {exc.errors()} | Request: {request.method} {request.url} | Correlation ID: {correlation_id}"
     )
@@ -30,18 +40,18 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         },
     )
 
-async def general_exception_handler(request: Request, exc: Exception):
+async def general_exception_handler(request: Request, exc: Exception) -> JSONResponse:
     """
     Handle unexpected errors in FastAPI.
-
+    
     Args:
-        request: The incoming request object.
-        exc: The exception raised.
-
+        request (Request): The incoming request object.
+        exc (Exception): The exception raised.
+    
     Returns:
         JSONResponse: A response with a generic error message.
     """
-    correlation_id = str(uuid.uuid4())  # Generate a unique correlation ID
+    correlation_id: str = generate_correlation_id()
     logger.error(
         f"Unexpected error: {exc} | Request: {request.method} {request.url} | Correlation ID: {correlation_id}",
         exc_info=True

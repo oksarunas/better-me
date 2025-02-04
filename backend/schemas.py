@@ -1,6 +1,6 @@
 from pydantic import BaseModel, validator
 from datetime import date
-from typing import List, Optional
+from typing import List, Optional, Dict, Tuple
 from enum import Enum
 
 
@@ -16,7 +16,7 @@ class HabitEnum(str, Enum):
     NO_DRINK = "No drink"
 
     @classmethod
-    def list_values(cls):
+    def list_values(cls) -> List[str]:
         """Return all habit values as a list."""
         return [habit.value for habit in cls]
 
@@ -31,7 +31,7 @@ class ProgressBase(BaseModel):
         from_attributes = True
 
     @validator("date")
-    def validate_date(cls, value):
+    def validate_date(cls, value: date) -> date:
         """Ensure date is not in the future."""
         if value > date.today():
             raise ValueError("Date cannot be in the future.")
@@ -61,9 +61,9 @@ class ProgressRead(ProgressBase):
 
 
 class ProgressUpdate(BaseModel):
+    """Schema for updating progress."""
     status: Optional[bool] = None
-    habit: Optional[str] = None  # Make this optional
-
+    habit: Optional[str] = None  # This field is optional
 
 
 class BulkUpdate(BaseModel):
@@ -72,7 +72,7 @@ class BulkUpdate(BaseModel):
     updates: List[ProgressUpdate]
 
     @validator("date")
-    def validate_date(cls, value):
+    def validate_date(cls, value: date) -> date:
         """Ensure date is not in the future."""
         if value > date.today():
             raise ValueError("Date cannot be in the future.")
@@ -80,26 +80,36 @@ class BulkUpdate(BaseModel):
 
 
 # Constants (if needed in other modules)
-ALLOWED_HABITS = HabitEnum.list_values()
+ALLOWED_HABITS: List[str] = HabitEnum.list_values()
 
 
-def build_progress_row(row_map: dict, date, habit: str) -> ProgressRead:
+def build_progress_row(
+    row_map: Dict[Tuple[date, str], ProgressRead],
+    progress_date: date,
+    habit: str
+) -> ProgressRead:
     """
     Construct a ProgressRead row for the given date and habit.
-    If no data exists, return a default row with status=False, id=0, and streak=0.
-    """
-    key = (date, habit)  # Match the key format used in row_map
-    row = row_map.get(key)
+    If no data exists in the mapping, return a default row with status=False, id=0, and streak=0.
 
+    Args:
+        row_map (Dict[Tuple[date, str], ProgressRead]): A mapping of (date, habit) keys to ProgressRead records.
+        progress_date (date): The date for which to build the progress row.
+        habit (str): The habit for which to build the progress row.
+
+    Returns:
+        ProgressRead: The existing or default progress record.
+    """
+    key = (progress_date, habit)  # Match the key format used in row_map
+    row = row_map.get(key)
     if row:
-        # Use existing data if available
         return row
     else:
-        # Default progress row if no data exists
+        # Return a default progress row if no data exists
         return ProgressRead(
             id=0,  # Default ID for missing rows
-            date=date,
+            date=progress_date,
             habit=habit,
             status=False,
-            streak=0,  # Default streak value
+            streak=0  # Default streak value
         )
