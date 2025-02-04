@@ -5,7 +5,8 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from database import init_db
-from routes import router  # Import the consolidated router
+from routes import router as progress_router
+from auth import router as auth_router  # Import the consolidated router
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -56,7 +57,8 @@ async def on_shutdown():
     logging.info("Application shutdown complete.")
 
 # Include the consolidated routes with a prefix
-app.include_router(router, prefix="/api")
+app.include_router(progress_router, prefix="/api")
+app.include_router(auth_router, prefix="/api")
 
 if __name__ == "__main__":
     logging.info("Starting server...")

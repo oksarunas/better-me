@@ -1,66 +1,78 @@
 import logging
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
+from sqlalchemy.ext.asyncio import AsyncSession
 from google.oauth2 import id_token
 from google.auth.transport import requests
-from sqlalchemy.ext.asyncio import AsyncSession
+from pydantic import BaseModel
+from datetime import datetime, timedelta
+import jwt  # You can use PyJWT or python-jose
 
-from config import GOOGLE_CLIENT_ID
+# Import database dependency and helper function
 from database import get_db
-from user_repository import find_user_by_google_sub, create_user
+from user_repository import get_or_create_user
+import os
 
 logger = logging.getLogger(__name__)
+router = APIRouter()
+
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "fallback-client-id")
+
+# JWT configuration - these values should ideally come from your config file
+SECRET_KEY = "your-secret-key"  # Replace with your secure secret key
+ALGORITHM = "HS256"
+ACCESS_TOKEN_EXPIRE_MINUTES = 60
+
+def create_access_token(data: dict, expires_delta: timedelta = None):
+    to_encode = data.copy()
+    expire = datetime.utcnow() + (expires_delta if expires_delta else timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
+    to_encode.update({"exp": expire})
+    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
+    logger.info(f"Created JWT token for user: {data.get('sub')}")
+    return encoded_jwt
 
 class GoogleLoginRequest(BaseModel):
     id_token: str
 
-auth_router = APIRouter(prefix="/auth", tags=["Auth"])
-
-@auth_router.post("/google")
-async def google_login(
-    request: GoogleLoginRequest,
-    db: AsyncSession = Depends(get_db)
-):
-    """
-    Receives an ID token from the frontend, verifies it with Google's public keys,
-    and finds or creates a user in the DB.
-    """
+@router.post("/auth/google")
+async def google_login(request: GoogleLoginRequest, db: AsyncSession = Depends(get_db)):
+    logger.info("Received Google login request")
     try:
         decoded_token = id_token.verify_oauth2_token(
             request.id_token,
             requests.Request(),
-            GOOGLE_CLIENT_ID
+            GOOGLE_CLIENT_ID  
         )
+        logger.info("Google token successfully verified")
     except ValueError as e:
-        logger.error(f"Invalid Google ID Token: {str(e)}")
+        logger.error(f"Invalid Google ID Token: {e}")
         raise HTTPException(status_code=401, detail="Invalid or expired token.")
-
-    # Extract user info from the token
-    google_sub = decoded_token["sub"]
+    
+    google_sub = decoded_token.get("sub")
     email = decoded_token.get("email")
     name = decoded_token.get("name", "")
     avatar_url = decoded_token.get("picture", "")
 
     if not email:
+        logger.error("Email not provided in Google token")
         raise HTTPException(status_code=400, detail="Email not provided by Google.")
 
     logger.info(f"Google user decoded: sub={google_sub}, email={email}, name={name}")
 
-    user_row = await find_user_by_google_sub(db, google_sub)
-    if user_row:
-        logger.info(f"User found in DB: {user_row}")
-    else:
-        await create_user(db, google_sub, email, name, avatar_url)
-        user_row = await find_user_by_google_sub(db, google_sub)
+    # Get or create the user in the database
+    user = await get_or_create_user(db, google_sub, email, name, avatar_url)
+    logger.info(f"User login successful: {user}")
 
-    user_dict = dict(user_row._mapping)
-    
-    # Optionally generate your own token/session here
+    # Create a JWT token with the user ID as the subject
+    access_token = create_access_token(data={"sub": str(user.id)})
+    logger.info(f"JWT issued for user_id: {user.id}")
 
     return {
-        "user_id": user_dict["id"],
-        "google_sub": user_dict["google_sub"],
-        "email": user_dict["email"],
-        "name": user_dict["name"],
-        "avatar_url": user_dict["avatar_url"],
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": {
+            "id": user.id,
+            "email": user.email,
+            "name": user.name,
+            "avatar_url": user.avatar_url,
+        }
     }
