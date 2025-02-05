@@ -22,7 +22,9 @@ app = FastAPI(
 )
 
 # Configure allowed origins
-allow_origins = ["https://betterme.website"]
+allowed_origins_env = os.getenv("CORS_ALLOW_ORIGINS", "")
+allow_origins = [origin.strip() for origin in allowed_origins_env.split(",") if origin.strip()]
+
 if os.getenv("ENV") == "development":
     allow_origins.append("http://localhost:3001")
 
