@@ -22,7 +22,7 @@ const App: React.FC = () => {
                 pauseOnFocusLoss
                 draggable
                 pauseOnHover
-                theme="light" // Switch to "dark" for dark mode
+                theme="light" // Consider switching to "dark" for a dark mode if needed
             />
         </main>
     );
