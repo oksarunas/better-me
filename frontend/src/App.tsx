@@ -1,17 +1,16 @@
+// App.tsx
 import React from "react";
-import AppRoutes from "./AppRoutes"; // Centralized routing component
+import AppRoutes from "./AppRoutes";
 import { ToastContainer } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css"; // Toast styles
-import "./styles/global.css"; // Global styles
+import "react-toastify/dist/ReactToastify.css";
+import "./styles/global.css";
+import NavBar from './components/NavBar';
 
-// Root application component
 const App: React.FC = () => {
     return (
         <main className="App">
-            {/* Centralized routing */}
+            <NavBar />
             <AppRoutes />
-
-            {/* Toast notifications */}
             <ToastContainer
                 position="top-right"
                 autoClose={3000}
@@ -22,7 +21,7 @@ const App: React.FC = () => {
                 pauseOnFocusLoss
                 draggable
                 pauseOnHover
-                theme="light" // Consider switching to "dark" for a dark mode if needed
+                theme="light"
             />
         </main>
     );

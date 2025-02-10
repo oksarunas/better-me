@@ -15,9 +15,7 @@ const LandingPage: React.FC = () => {
   const handleCredentialResponse = async (response: any) => {
     try {
       const idToken = response.credential; // The Google ID token
-      console.log("Google ID token:", idToken);
       const result = await googleSignInApi(idToken);
-      console.log("Server response:", result);
       navigate("/tracker");
     } catch (err) {
       console.error("Google sign-in error:", err);
