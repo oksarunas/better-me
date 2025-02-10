@@ -61,7 +61,8 @@ async def on_shutdown():
 # Include the consolidated routes with a prefix
 app.include_router(progress_router, prefix="/api")
 app.include_router(auth_router, prefix="/api")
-
+from analytics import router as analytics_router  # Import the analytics router
+app.include_router(analytics_router, prefix="/api")  # Include the analytics router
 if __name__ == "__main__":
     logging.info("Starting server...")
     uvicorn.run("main:app", host="0.0.0.0", port=8001, reload=True)
