@@ -6,7 +6,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from database import init_db
 from routes import router as progress_router
-from auth import router as auth_router  # Import the consolidated router
+from auth import router as auth_router
+from analytics import router as analytics_router
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -21,14 +22,10 @@ app = FastAPI(
     openapi_url="/openapi.json",
 )
 
-# Configure allowed origins
-allowed_origins_env = os.getenv("CORS_ALLOW_ORIGINS", "")
+# Configure CORS
+allowed_origins_env = os.getenv("CORS_ALLOW_ORIGINS", "http://localhost:3001")
 allow_origins = [origin.strip() for origin in allowed_origins_env.split(",") if origin.strip()]
 
-if os.getenv("ENV") == "development":
-    allow_origins.append("http://localhost:3001")
-
-# Configure CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allow_origins,
@@ -49,20 +46,22 @@ async def root():
 @app.on_event("startup")
 async def on_startup():
     logging.info("Starting application...")
-    await init_db()
-    logging.info("Database initialized successfully.")
+    try:
+        await init_db()
+        logging.info("Database initialized successfully.")
+    except Exception as e:
+        logging.error(f"Database initialization failed: {e}")
 
 @app.on_event("shutdown")
 async def on_shutdown():
     logging.info("Shutting down application...")
-    # Add cleanup logic here if needed
     logging.info("Application shutdown complete.")
 
-# Include the consolidated routes with a prefix
+# Include the routers
 app.include_router(progress_router, prefix="/api")
 app.include_router(auth_router, prefix="/api")
-from analytics import router as analytics_router  # Import the analytics router
-app.include_router(analytics_router, prefix="/api")  # Include the analytics router
+app.include_router(analytics_router, prefix="/api")
+
 if __name__ == "__main__":
     logging.info("Starting server...")
-    uvicorn.run("main:app", host="0.0.0.0", port=8001, reload=True)
+    uvicorn.run("main:app", host="0.0.0.0", port=int(os.getenv("PORT", 8001)), reload=True)
