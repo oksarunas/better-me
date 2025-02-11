@@ -1,9 +1,10 @@
 "use client";
 import { Card } from "../../components/ui/Card";
-import Checkbox from "../../components/ui/Checkbox";
-import Badge from "../../components/ui/Badge";
+import { Checkbox } from "../../components/ui/Checkbox";
+import { Badge } from "../../components/ui/Badge";
 import { Flame } from "lucide-react";
 import { Habit } from "../../types";
+import { Progress } from "../../components/ui/Progress";
 
 interface HabitListProps {
   groupedHabits: Record<string, Habit[]>;
@@ -23,42 +24,43 @@ export default function HabitList({ groupedHabits, toggleHabit }: HabitListProps
                 key={habit.id}
                 className={`p-4 transition-all hover:shadow-lg ${
                   habit.status ? "bg-gray-900/50 border-gray-800" : "bg-gray-900/30 border-gray-800"
-                }`}
+                } transform hover:scale-102 hover:-translate-y-1`}
               >
                 <div className="flex items-center space-x-4">
                   <Checkbox
                     checked={habit.status}
-                    onCheckedChange={() => toggleHabit(habit.id, habit.status)}
-                    className="h-5 w-5 transition-all data-[state=checked]:bg-green-500"
+                    onChange={(e) => toggleHabit(habit.id, e.target.checked)}
+                    className="h-5 w-5 transition-all data-[state=checked]:bg-green-500 hover:scale-110"
                   />
                   <div className="flex-1">
                     <span className="font-medium">{habit.habit}</span>
                     <div className="mt-1 flex items-center gap-2">
-                      <Badge variant={habit.status ? "default" : "secondary"} className="transition-all">
-                        <Flame className="h-4 w-4 mr-1 text-amber-500" />
-                        {habit.streak} days in a row!
+                      <Badge 
+                        variant={habit.status ? "primary" : "secondary"} 
+                        className="transition-all"
+                      >
+                        {habit.category}
                       </Badge>
-                      {habit.streak >= 7 && (
-                        <Badge variant="secondary" className="transition-all">
-                          Level {Math.floor(habit.streak / 7)}
+                      {habit.streak > 0 && (
+                        <Badge 
+                          variant="success" 
+                          className="animate-pulse"
+                        >
+                          🔥 {habit.streak} day streak
                         </Badge>
                       )}
-                      {(() => {
-                        const milestone =
-                          habit.streak >= 100
-                            ? "100+ Days Milestone!"
-                            : habit.streak >= 30
-                            ? "30+ Days Milestone!"
-                            : habit.streak >= 7
-                            ? "7+ Days Milestone!"
-                            : null;
-                        return milestone ? (
-                          <Badge variant="success" className="transition-all">
-                            {milestone}
-                          </Badge>
-                        ) : null;
-                      })()}
                     </div>
+                    <Progress
+                      className="mt-2"
+                      value={habit.streak}
+                      max={30}
+                      size="sm"
+                      variant="glass"
+                      indicatorVariant="rainbow"
+                      animated={true}
+                      showValue={true}
+                      valueLabel="day streak"
+                    />
                   </div>
                 </div>
               </Card>

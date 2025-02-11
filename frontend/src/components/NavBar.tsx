@@ -16,7 +16,7 @@ const NavBar: React.FC = () => {
           </Link>
           {isAuthenticated && (
             <>
-              <Link to="/habits" className="text-gray-300 hover:text-white transition-colors">
+              <Link to="/tracker" className="text-gray-300 hover:text-white transition-colors">
                 Habits
               </Link>
               <Link to="/sleep" className="text-gray-300 hover:text-white transition-colors">
