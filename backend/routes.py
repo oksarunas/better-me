@@ -1,10 +1,11 @@
-from datetime import date, datetime
 import logging
+from datetime import date, datetime
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.future import select
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.exc import SQLAlchemyError
 
 from database import get_db
 from logic import (
@@ -102,15 +103,31 @@ async def patch_progress(
         await db.rollback()
         raise HTTPException(status_code=500, detail="Failed to update progress record")
 
-@router.get("/health", response_model=dict)
-async def health_check(db: AsyncSession = Depends(get_db)):
-    """Perform a health check by verifying the database connection and uptime."""
+# -----------------------------
+# Health Check (Merged from health.py)
+# -----------------------------
+@router.get("/health", tags=["Health"])
+async def health_check(db: AsyncSession = Depends(get_db)) -> dict:
+    """
+    Perform a health check for the application.
+    """
     try:
-        await db.execute(select(1))
+        await db.execute(select(1))  # ✅ Using ORM instead of raw SQL
         database_status = "healthy"
     except Exception as e:
         logger.error(f"Health check failed: {e}")
         database_status = "unhealthy"
 
     uptime_seconds = (datetime.now() - ApplicationStatus.startup_time).total_seconds()
-    return {"status": database_status, "uptime": uptime_seconds}
+
+    app_status = {
+        "status": database_status,
+        "uptime_seconds": uptime_seconds,
+    }
+
+    logger.info(f"Health check status: {app_status['status']}, uptime: {uptime_seconds:.2f}s")
+
+    if database_status == "unhealthy":
+        raise HTTPException(status_code=503, detail=app_status)
+
+    return app_status
