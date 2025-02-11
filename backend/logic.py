@@ -18,24 +18,13 @@ logger = logging.getLogger(__name__)
 
 
 async def update_progress(progress: ProgressCreate, db: AsyncSession) -> None:
-    """
-    Update progress for a specific habit and date.
-
-    Args:
-        progress (ProgressCreate): Contains date, habit, and status.
-        db (AsyncSession): The database session.
-
-    Raises:
-        HTTPException: If the habit is invalid or if the update fails.
-    """
-    if progress.habit not in ALLOWED_HABITS:
-        raise HTTPException(status_code=400, detail=f"Invalid habit: {progress.habit}")
+    if progress.habit.value not in ALLOWED_HABITS:
+        raise HTTPException(status_code=400, detail=f"Invalid habit: {progress.habit.value}")
     try:
-        # Pass updates as a dictionary to the model function.
         await update_progress_status_in_db(
             db=db,
             date_obj=progress.date,
-            habit=progress.habit,
+            habit=progress.habit.value,  # ✅ Convert HabitEnum to string
             updates={"status": progress.status},
         )
         logger.info(f"Updated progress for {progress.habit} on {progress.date}")
@@ -44,38 +33,30 @@ async def update_progress(progress: ProgressCreate, db: AsyncSession) -> None:
         raise HTTPException(status_code=500, detail="Failed to update progress")
 
 
-async def bulk_update_progress(
-    data: BulkUpdate, db: AsyncSession, allowed_habits: List[str]
-) -> None:
-    """
-    Bulk-update multiple habits for a specific date.
-
-    Args:
-        data (BulkUpdate): Contains a date and a list of habit updates.
-        db (AsyncSession): The database session.
-        allowed_habits (List[str]): List of permissible habit names.
-
-    Raises:
-        HTTPException: If any habit is invalid or if the bulk update fails.
-    """
-    invalid_habits = [u.habit for u in data.updates if u.habit not in allowed_habits]
-    if invalid_habits:
-        raise HTTPException(status_code=400, detail=f"Invalid habits: {invalid_habits}")
+async def bulk_update_progress(data: BulkUpdate, db: AsyncSession) -> None:
+    for update in data.updates:
+        if update.habit.value not in ALLOWED_HABITS:
+            raise HTTPException(status_code=400, detail=f"Invalid habit: {update.habit.value}")
 
     try:
-        updates = [
-            {"date": data.date, "habit": update.habit, "status": update.status}
-            for update in data.updates
-        ]
-        await db.execute(
-            text("""
-                INSERT INTO progress (date, habit, status, streak)
-                VALUES (:date, :habit, :status, 0)
-                ON CONFLICT (date, habit) DO UPDATE
-                SET status = EXCLUDED.status
-            """),
-            updates,
-        )
+        for update in data.updates:
+            existing_record = await db.execute(
+                text("SELECT id FROM progress WHERE date = :date AND habit = :habit"),
+                {"date": data.date, "habit": update.habit.value},
+            )
+            row = existing_record.fetchone()
+
+            if row:
+                await db.execute(
+                    text("UPDATE progress SET status = :status WHERE id = :id"),
+                    {"status": update.status, "id": row[0]},
+                )
+            else:
+                await db.execute(
+                    text("INSERT INTO progress (date, habit, status, streak) VALUES (:date, :habit, :status, 0)"),
+                    {"date": data.date, "habit": update.habit.value, "status": update.status},
+                )
+
         await db.commit()
         logger.info(f"Bulk update successful for date {data.date}")
     except Exception as e:
@@ -83,48 +64,21 @@ async def bulk_update_progress(
         raise HTTPException(status_code=500, detail="Failed to bulk update progress")
 
 
-async def get_progress_by_date(
-    date_obj: date, db: AsyncSession, allowed_habits: List[str]
-) -> List[ProgressRead]:
-    """
-    Fetch progress for a single date.
-
-    Args:
-        date_obj (date): The date to fetch progress for.
-        db (AsyncSession): The database session.
-        allowed_habits (List[str]): List of permissible habit names.
-
-    Returns:
-        List[ProgressRead]: A list of progress entries for each habit.
-
-    Raises:
-        HTTPException: If data retrieval fails.
-    """
+async def get_progress_by_date(date_obj: date, db: AsyncSession) -> List[ProgressRead]:
     try:
         rows = await fetch_all_progress_by_date(db, date_obj)
-        # Create a mapping from habit to the corresponding row.
         row_map = {r.habit: r for r in rows}
 
-        results: List[ProgressRead] = []
-        for habit in allowed_habits:
-            if habit in row_map:
-                row = row_map[habit]
-                results.append(ProgressRead(
-                    id=row.id,
-                    date=row.date,
-                    habit=row.habit,
-                    status=row.status,
-                    streak=row.streak,
-                ))
-            else:
-                # Create a default progress entry if missing.
-                results.append(ProgressRead(
-                    id=0,
-                    date=date_obj,
-                    habit=habit,
-                    status=False,
-                    streak=0,
-                ))
+        results = [
+            ProgressRead(
+                id=row.id if habit in row_map else 0,
+                date=date_obj,
+                habit=HabitEnum(habit),
+                status=row_map[habit].status if habit in row_map else False,
+                streak=row_map[habit].streak if habit in row_map else 0,
+            )
+            for habit in ALLOWED_HABITS
+        ]
         logger.info(f"Progress fetched for {date_obj}")
         return results
     except Exception as e:
