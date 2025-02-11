@@ -1,52 +1,55 @@
 import logging
+import os
+from datetime import datetime, timedelta
+
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
+from fastapi.security import OAuth2PasswordBearer
 from google.oauth2 import id_token
 from google.auth.transport import requests
 from pydantic import BaseModel
-from datetime import datetime, timedelta
-import jwt  # You can use PyJWT or python-jose
+import jwt
+from sqlalchemy.ext.asyncio import AsyncSession
 
-# Import database dependency and helper function
+from config import Config
 from database import get_db
 from user_repository import get_or_create_user
-import os
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
 
-GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "fallback-client-id")
-
-# JWT configuration - these values should ideally come from your config file
-SECRET_KEY = "your-secret-key"  # Replace with your secure secret key
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60
+# OAuth & JWT Configuration
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/google")
+GOOGLE_CLIENT_ID = Config.GOOGLE_CLIENT_ID
+SECRET_KEY = Config.SECRET_KEY
+ALGORITHM = Config.ALGORITHM
+ACCESS_TOKEN_EXPIRE_MINUTES = Config.ACCESS_TOKEN_EXPIRE_MINUTES
 
 def create_access_token(data: dict, expires_delta: timedelta = None):
     to_encode = data.copy()
     expire = datetime.utcnow() + (expires_delta if expires_delta else timedelta(minutes=ACCESS_TOKEN_EXPIRE_MINUTES))
     to_encode.update({"exp": expire})
-    encoded_jwt = jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
-    logger.info(f"Created JWT token for user: {data.get('sub')}")
-    return encoded_jwt
+    return jwt.encode(to_encode, SECRET_KEY, algorithm=ALGORITHM)
 
 class GoogleLoginRequest(BaseModel):
     id_token: str
 
 @router.post("/auth/google")
 async def google_login(request: GoogleLoginRequest, db: AsyncSession = Depends(get_db)):
+    """Handles Google OAuth2 login and returns JWT token."""
     logger.info("Received Google login request")
     try:
         decoded_token = id_token.verify_oauth2_token(
             request.id_token,
             requests.Request(),
-            GOOGLE_CLIENT_ID  
+            GOOGLE_CLIENT_ID
         )
+        if decoded_token.get("aud") != GOOGLE_CLIENT_ID:
+            raise ValueError("Token was not issued for this client.")
         logger.info("Google token successfully verified")
     except ValueError as e:
-        logger.error(f"Invalid Google ID Token: {e}")
-        raise HTTPException(status_code=401, detail="Invalid or expired token.")
-    
+        logger.error(f"Google ID Token verification failed: {e}")
+        raise HTTPException(status_code=401, detail=str(e))
+
     google_sub = decoded_token.get("sub")
     email = decoded_token.get("email")
     name = decoded_token.get("name", "")
@@ -56,13 +59,13 @@ async def google_login(request: GoogleLoginRequest, db: AsyncSession = Depends(g
         logger.error("Email not provided in Google token")
         raise HTTPException(status_code=400, detail="Email not provided by Google.")
 
-    logger.info(f"Google user decoded: sub={google_sub}, email={email}, name={name}")
+    logger.info(f"Google user verified: sub={google_sub}, email={email}")
 
-    # Get or create the user in the database
+    # Get or create user in DB
     user = await get_or_create_user(db, google_sub, email, name, avatar_url)
-    logger.info(f"User login successful: {user}")
+    logger.info(f"User login successful: user_id={user.id}")
 
-    # Create a JWT token with the user ID as the subject
+    # Generate JWT token
     access_token = create_access_token(data={"sub": str(user.id)})
     logger.info(f"JWT issued for user_id: {user.id}")
 
@@ -76,3 +79,18 @@ async def google_login(request: GoogleLoginRequest, db: AsyncSession = Depends(g
             "avatar_url": user.avatar_url,
         }
     }
+
+async def get_current_user(token: str = Depends(oauth2_scheme)):
+    """Extract user ID from JWT token."""
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
+        user_id: str = payload.get("sub")
+        if user_id is None:
+            raise HTTPException(status_code=401, detail="Invalid token payload.")
+        return user_id
+    except jwt.PyJWTError:
+        raise HTTPException(status_code=401, detail="Could not validate credentials")
+
+@router.get("/protected")
+async def protected_route(user_id: str = Depends(get_current_user)):
+    return {"message": f"Hello, user {user_id}!"}
