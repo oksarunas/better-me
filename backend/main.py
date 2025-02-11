@@ -1,13 +1,13 @@
 import os
 import logging
+import asyncio
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-
 from database import init_db
-from routes import router as progress_router
-from auth import router as auth_router
-from analytics import router as analytics_router
+from routes import router as api_router
+from config import Config
+from middleware import MetricsMiddleware  # ✅ Import Metrics Middleware
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -22,13 +22,13 @@ app = FastAPI(
     openapi_url="/openapi.json",
 )
 
-# Configure CORS
-allowed_origins_env = os.getenv("CORS_ALLOW_ORIGINS", "http://localhost:3001")
-allow_origins = [origin.strip() for origin in allowed_origins_env.split(",") if origin.strip()]
+# Register Middleware
+app.add_middleware(MetricsMiddleware)  # ✅ Tracks total requests & errors
 
+# Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=allow_origins,
+    allow_origins=Config.ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -47,8 +47,8 @@ async def root():
 async def on_startup():
     logging.info("Starting application...")
     try:
-        await init_db()
-        logging.info("Database initialized successfully.")
+        asyncio.create_task(init_db())  # ✅ Non-blocking DB init
+        logging.info("Database initialization started.")
     except Exception as e:
         logging.error(f"Database initialization failed: {e}")
 
@@ -57,10 +57,8 @@ async def on_shutdown():
     logging.info("Shutting down application...")
     logging.info("Application shutdown complete.")
 
-# Include the routers
-app.include_router(progress_router, prefix="/api")
-app.include_router(auth_router, prefix="/api")
-app.include_router(analytics_router, prefix="/api")
+# Include all API routers
+app.include_router(api_router)
 
 if __name__ == "__main__":
     logging.info("Starting server...")
