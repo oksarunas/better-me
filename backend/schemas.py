@@ -1,4 +1,4 @@
-from pydantic import BaseModel, validator
+from pydantic import BaseModel, validator, ConfigDict
 from datetime import date
 from typing import List, Optional, Dict, Tuple
 from enum import Enum
@@ -27,8 +27,7 @@ class ProgressBase(BaseModel):
     habit: HabitEnum
     status: bool
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)  # ✅ Pydantic v2 format
 
     @validator("date")
     def validate_date(cls, value: date) -> date:
@@ -48,22 +47,15 @@ class ProgressRead(ProgressBase):
     id: int
     streak: int = 0
 
-    class Config:
-        json_schema_extra = {
-            "example": {
-                "id": 1,
-                "date": "2025-01-01",
-                "habit": "Workout",
-                "status": True,
-                "streak": 5,
-            }
-        }
+    model_config = ConfigDict(from_attributes=True)  # ✅ Corrected Pydantic v2 syntax
+
+    # ❌ Removed `class Config:` to fix the error
 
 
 class ProgressUpdate(BaseModel):
     """Schema for updating progress."""
     status: Optional[bool] = None
-    habit: Optional[str] = None  # This field is optional
+    habit: Optional[HabitEnum] = None  # ✅ Enforce valid habit values
 
 
 class BulkUpdate(BaseModel):
@@ -84,18 +76,18 @@ ALLOWED_HABITS: List[str] = HabitEnum.list_values()
 
 
 def build_progress_row(
-    row_map: Dict[Tuple[date, str], ProgressRead],
+    row_map: Dict[Tuple[date, HabitEnum], ProgressRead],  # ✅ Enforce HabitEnum
     progress_date: date,
-    habit: str
+    habit: HabitEnum  # ✅ Enforce HabitEnum
 ) -> ProgressRead:
     """
     Construct a ProgressRead row for the given date and habit.
     If no data exists in the mapping, return a default row with status=False, id=0, and streak=0.
 
     Args:
-        row_map (Dict[Tuple[date, str], ProgressRead]): A mapping of (date, habit) keys to ProgressRead records.
+        row_map (Dict[Tuple[date, HabitEnum], ProgressRead]): A mapping of (date, habit) keys to ProgressRead records.
         progress_date (date): The date for which to build the progress row.
-        habit (str): The habit for which to build the progress row.
+        habit (HabitEnum): The habit for which to build the progress row.
 
     Returns:
         ProgressRead: The existing or default progress record.
