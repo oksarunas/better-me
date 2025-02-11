@@ -47,7 +47,7 @@ async def weekly_progress(db: AsyncSession = Depends(get_db)):
 async def get_progress(progress_date: date, db: AsyncSession = Depends(get_db)):
     """Get progress for a specific date."""
     try:
-        return await get_progress_by_date(progress_date, db, ALLOWED_HABITS)
+        return await get_progress_by_date(progress_date, db)
     except Exception as e:
         logger.error(f"Error in get_progress for {progress_date}: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch progress")

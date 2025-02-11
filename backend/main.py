@@ -13,6 +13,9 @@ from middleware import MetricsMiddleware
 from application_status import ApplicationStatus
 from exceptions import validation_exception_handler, general_exception_handler
 
+from routes import router as progress_router
+from analytics import router as analytics_router 
+
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
 
@@ -31,7 +34,7 @@ app.add_exception_handler(RequestValidationError, validation_exception_handler)
 app.add_exception_handler(Exception, general_exception_handler)
 
 # Register Middleware
-app.add_middleware(MetricsMiddleware)  # ✅ Tracks total requests & errors
+app.add_middleware(MetricsMiddleware)
 
 # Configure CORS
 app.add_middleware(
@@ -55,7 +58,7 @@ async def root():
 async def on_startup():
     logging.info("Starting application...")
     try:
-        asyncio.create_task(init_db())  # ✅ Non-blocking DB init
+        asyncio.create_task(init_db())
         logging.info("Database initialization started.")
     except Exception as e:
         logging.error(f"Database initialization failed: {e}")
@@ -66,7 +69,8 @@ async def on_shutdown():
     logging.info("Application shutdown complete.")
 
 # Include all API routers
-app.include_router(api_router)
+app.include_router(progress_router, prefix="/api")
+app.include_router(analytics_router, prefix="/api")
 
 if __name__ == "__main__":
     logging.info("Starting server...")

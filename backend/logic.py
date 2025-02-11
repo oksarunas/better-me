@@ -67,19 +67,27 @@ async def bulk_update_progress(data: BulkUpdate, db: AsyncSession) -> None:
 async def get_progress_by_date(date_obj: date, db: AsyncSession) -> List[ProgressRead]:
     try:
         rows = await fetch_all_progress_by_date(db, date_obj)
-        row_map = {r.habit: r for r in rows}
+        row_map = {r.habit: r for r in rows}  # ✅ Maps habits to rows
 
-        results = [
-            ProgressRead(
-                id=row.id if habit in row_map else 0,
-                date=date_obj,
-                habit=HabitEnum(habit),
-                status=row_map[habit].status if habit in row_map else False,
-                streak=row_map[habit].streak if habit in row_map else 0,
-            )
-            for habit in ALLOWED_HABITS
-        ]
-        logger.info(f"Progress fetched for {date_obj}")
+        results: List[ProgressRead] = []
+        for habit in ALLOWED_HABITS:
+            if habit in row_map:
+                row = row_map[habit]  # ✅ Assign `row` correctly
+                results.append(ProgressRead(
+                    id=row.id,
+                    date=row.date,
+                    habit=row.habit,
+                    status=row.status,
+                    streak=row.streak,
+                ))
+            else:
+                results.append(ProgressRead(
+                    id=0,
+                    date=date_obj,
+                    habit=habit,
+                    status=False,
+                    streak=0,
+                ))
         return results
     except Exception as e:
         logger.error(f"Error fetching progress for {date_obj}: {e}")
