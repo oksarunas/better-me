@@ -1,14 +1,11 @@
-from datetime import date, datetime, timedelta
+from datetime import date, datetime
 import logging
-from typing import List, Optional
+from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
-from fastapi import Body
-from pydantic import BaseModel
+from sqlalchemy.future import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.sql import text
 
-# Import your local modules
 from database import get_db
 from logic import (
     get_progress_by_date,
@@ -24,20 +21,18 @@ from schemas import (
     ALLOWED_HABITS,
 )
 from application_status import ApplicationStatus
+from models import Progress
 
 logger = logging.getLogger(__name__)
 
-# Create a central APIRouter instance for progress and health endpoints
 router = APIRouter()
 
 # -----------------------------
-# Weekly Progress Endpoint (static route)
+# Weekly Progress Endpoint
 # -----------------------------
 @router.get("/progress/weekly", response_model=List[ProgressRead])
 async def weekly_progress(db: AsyncSession = Depends(get_db)):
-    """
-    Get progress for the last 7 days.
-    """
+    """Get progress for the last 7 days."""
     try:
         return await get_weekly_progress(db, ALLOWED_HABITS)
     except Exception as e:
@@ -45,16 +40,13 @@ async def weekly_progress(db: AsyncSession = Depends(get_db)):
         raise HTTPException(status_code=500, detail="Failed to fetch weekly progress")
 
 # -----------------------------
-# Progress Endpoint by Date (dynamic route)
+# Progress Endpoint by Date
 # -----------------------------
 @router.get("/progress/{progress_date}", response_model=List[ProgressRead])
 async def get_progress(progress_date: date, db: AsyncSession = Depends(get_db)):
-    """
-    Get progress for a specific date.
-    """
+    """Get progress for a specific date."""
     try:
-        progress_entries = await get_progress_by_date(progress_date, db, ALLOWED_HABITS)
-        return progress_entries
+        return await get_progress_by_date(progress_date, db, ALLOWED_HABITS)
     except Exception as e:
         logger.error(f"Error in get_progress for {progress_date}: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch progress")
@@ -63,9 +55,7 @@ async def get_progress(progress_date: date, db: AsyncSession = Depends(get_db)):
 async def create_or_update_progress(
     progress: ProgressCreate, db: AsyncSession = Depends(get_db)
 ):
-    """
-    Create or update a progress record.
-    """
+    """Create or update a progress record."""
     try:
         await update_progress(progress, db)
         return {"message": "Progress updated successfully"}
@@ -75,9 +65,7 @@ async def create_or_update_progress(
 
 @router.put("/progress/bulk", status_code=200)
 async def bulk_update(data: BulkUpdate, db: AsyncSession = Depends(get_db)):
-    """
-    Bulk update progress records.
-    """
+    """Bulk update progress records."""
     try:
         await bulk_update_progress(data, db, ALLOWED_HABITS)
         return {"message": "Bulk update completed successfully"}
@@ -91,54 +79,38 @@ async def patch_progress(
     progress_update: ProgressUpdate,
     db: AsyncSession = Depends(get_db)
 ):
-    """
-    Partially update a progress record by its ID.
-    """
+    """Partially update a progress record by its ID."""
     try:
-        result = await db.execute(text("SELECT * FROM progress WHERE id = :id"), {"id": progress_id})
-        record = result.fetchone()
+        result = await db.execute(select(Progress).where(Progress.id == progress_id))
+        record = result.scalars().first()
+        
         if not record:
             raise HTTPException(status_code=404, detail="Progress record not found")
-        
-        updates = {k: v for k, v in progress_update.dict().items() if v is not None}
+
+        updates = progress_update.dict(exclude_unset=True)
         if updates:
-            update_query = text("UPDATE progress SET " +
-                ", ".join([f"{key} = :{key}" for key in updates.keys()]) +
-                " WHERE id = :id RETURNING *")
-            updates["id"] = progress_id
-            updated_result = await db.execute(update_query, updates)
-            updated_record = updated_result.fetchone()
+            for key, value in updates.items():
+                setattr(record, key, value)
+
             await db.commit()
-            if updated_record:
-                return updated_record
+            await db.refresh(record)
+            return record
+
         raise HTTPException(status_code=400, detail="No fields provided for update")
     except Exception as e:
         logger.error(f"Error updating progress record {progress_id}: {e}")
         await db.rollback()
         raise HTTPException(status_code=500, detail="Failed to update progress record")
 
-# -----------------------------
-# Health Endpoint
-# -----------------------------
 @router.get("/health", response_model=dict)
 async def health_check(db: AsyncSession = Depends(get_db)):
-    """
-    Perform a health check by verifying the database connection and uptime.
-    """
+    """Perform a health check by verifying the database connection and uptime."""
     try:
-        await db.execute(text("SELECT 1"))
+        await db.execute(select(1))
         database_status = "healthy"
     except Exception as e:
         logger.error(f"Health check failed: {e}")
         database_status = "unhealthy"
 
     uptime_seconds = (datetime.now() - ApplicationStatus.startup_time).total_seconds()
-    status = {
-        "status": "healthy" if database_status == "healthy" else "unhealthy",
-        "database": database_status,
-        "uptime": uptime_seconds,
-    }
-
-    if database_status == "unhealthy":
-        raise HTTPException(status_code=503, detail=status)
-    return status
+    return {"status": database_status, "uptime": uptime_seconds}
