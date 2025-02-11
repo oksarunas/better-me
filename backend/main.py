@@ -15,6 +15,7 @@ from exceptions import validation_exception_handler, general_exception_handler
 
 from routes import router as progress_router
 from analytics import router as analytics_router 
+from auth import router as auth_router
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -37,6 +38,7 @@ app.add_exception_handler(Exception, general_exception_handler)
 app.add_middleware(MetricsMiddleware)
 
 # Configure CORS
+logging.info(f"Configuring CORS with origins: {Config.ALLOWED_ORIGINS}")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=Config.ALLOWED_ORIGINS,
@@ -71,6 +73,7 @@ async def on_shutdown():
 # Include all API routers
 app.include_router(progress_router, prefix="/api")
 app.include_router(analytics_router, prefix="/api")
+app.include_router(auth_router, prefix="/api")
 
 if __name__ == "__main__":
     logging.info("Starting server...")

@@ -5,18 +5,50 @@ import { Button } from "../../components/ui/Button";
 import { Card } from "../../components/ui/Card";
 import Footer from '../../components/Footer';
 import { googleSignInApi } from '../../api';
+import { useAuth } from '../../contexts/AuthContext';
 
 const CLIENT_ID = "1082509608270-drlp7f9h7hr70q16mfv9q3cv7pqk6jqi.apps.googleusercontent.com";
 
 const LandingPage: React.FC = () => {
   const navigate = useNavigate();
+  const { login, isAuthenticated } = useAuth();
+
+  // Effect to handle navigation after successful authentication
+  useEffect(() => {
+    if (isAuthenticated) {
+      console.log('User is authenticated, navigating to tracker');
+      navigate("/tracker");
+    }
+  }, [isAuthenticated, navigate]);
 
   // Callback for handling the Google credential response
   const handleCredentialResponse = async (response: any) => {
     try {
+      console.log('Google sign-in response:', response);
       const idToken = response.credential; // The Google ID token
+      
+      if (!idToken) {
+        console.error('No credential received from Google');
+        return;
+      }
+
+      console.log('Calling googleSignInApi with idToken:', idToken);
       const result = await googleSignInApi(idToken);
-      navigate("/tracker");
+      console.log('API response:', result);
+
+      if (!result?.access_token || !result?.user) {
+        console.error('Invalid response from API:', result);
+        return;
+      }
+
+      // Convert the id to string before passing to login
+      const user = {
+        ...result.user,
+        id: result.user.id.toString()
+      };
+
+      login(result.access_token, user);
+      // Navigation will be handled by the useEffect above
     } catch (err) {
       console.error("Google sign-in error:", err);
     }
