@@ -4,10 +4,14 @@ import asyncio
 import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.exceptions import RequestValidationError
+
 from database import init_db
 from routes import router as api_router
 from config import Config
-from middleware import MetricsMiddleware  # ✅ Import Metrics Middleware
+from middleware import MetricsMiddleware
+from application_status import ApplicationStatus
+from exceptions import validation_exception_handler, general_exception_handler
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s [%(levelname)s] %(message)s")
@@ -21,6 +25,10 @@ app = FastAPI(
     redoc_url="/redoc",
     openapi_url="/openapi.json",
 )
+
+# Register Exception Handlers
+app.add_exception_handler(RequestValidationError, validation_exception_handler)
+app.add_exception_handler(Exception, general_exception_handler)
 
 # Register Middleware
 app.add_middleware(MetricsMiddleware)  # ✅ Tracks total requests & errors

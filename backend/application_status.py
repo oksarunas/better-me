@@ -20,8 +20,11 @@ class ApplicationStatus:
 
     @classmethod
     def get_status(cls) -> dict:
+        """Returns application status including uptime, total requests, and errors."""
+        uptime_seconds = (datetime.now() - cls.startup_time).total_seconds()
         return {
             "startup_time": cls.startup_time.isoformat(),
+            "uptime_seconds": int(uptime_seconds),  # ✅ New uptime tracking
             "total_requests": cls.total_requests,
             "total_errors": cls.total_errors,
         }
