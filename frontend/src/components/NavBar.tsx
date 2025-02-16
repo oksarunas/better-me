@@ -31,22 +31,15 @@ const NavBar: React.FC = () => {
             </>
           )}
         </div>
-        {/* Right side: Action Button (e.g., Sign In / Sign Out) */}
+        {/* Right side: Sign Out Button */}
         <div>
-          {isAuthenticated ? (
+          {isAuthenticated && (
             <button 
               onClick={logout}
               className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
             >
               Sign Out
             </button>
-          ) : (
-            <Link 
-              to="/login"
-              className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
-            >
-              Sign In
-            </Link>
           )}
         </div>
       </div>

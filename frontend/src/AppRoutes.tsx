@@ -5,6 +5,7 @@ import HabitTracker from "./components/HabitTracker/HabitTracker";
 import NotFoundPage from "./components/NotFoundPage";
 import PrivacyPolicy from "./components/Privacy";
 import TitleSetter from "./components/TitleSetter";
+import Login from "./components/Login/Login";
 
 interface ProtectedRouteProps {
   element: React.ReactElement;
@@ -25,6 +26,7 @@ interface RouteConfig {
 
 export const routes: RouteConfig[] = [
   { path: "/", element: <LandingPage />, meta: { title: "Home - Better Me App" } },
+  { path: "/login", element: <Login />, meta: { title: "Sign In - Better Me App" } },
   { path: "/tracker", element: <ProtectedRoute element={<HabitTracker />} />, meta: { title: "Habit Tracker" } },
   { path: "/privacy", element: <PrivacyPolicy />, meta: { title: "Privacy Policy" } },
   { path: "*", element: <NotFoundPage />, meta: { title: "Page Not Found" } },

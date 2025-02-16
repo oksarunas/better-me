@@ -19,8 +19,9 @@ class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
-    google_sub = Column(String, unique=True, index=True, nullable=False)
+    google_sub = Column(String, unique=True, index=True, nullable=True)  # Made nullable for email/password auth
     email = Column(String, unique=True, index=True, nullable=False)
+    password_hash = Column(String, nullable=True)  # Nullable for Google auth users
     name = Column(String, nullable=True)
     avatar_url = Column(String, nullable=True)
 

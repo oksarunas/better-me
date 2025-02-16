@@ -96,10 +96,6 @@ const LandingPage: React.FC = () => {
           </p>
           <div className="flex flex-col items-center space-y-4">
             {/* "Get Started" Button */}
-            <Button size="lg" className="group" onClick={() => navigate("/tracker")}>
-              Get Started
-              <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
-            </Button>
             {/* Custom Google Sign-In Button */}
             <Button size="lg" className="group" onClick={handleGoogleSignIn}>
               Sign in with Google
