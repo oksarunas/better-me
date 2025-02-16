@@ -34,6 +34,7 @@ export interface Habit {
   status: boolean;
   streak: number;
   category?: string;
+  goal: number;
 }
 
 export interface RawHabit {

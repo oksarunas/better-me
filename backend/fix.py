@@ -73,8 +73,7 @@ async def fill_missing_data(db, allowed_habits):
                 bulk_data = BulkUpdate(date=current_date, updates=updates)
                 await bulk_update_progress(
                     data=bulk_data,
-                    db=db,
-                    allowed_habits=allowed_habits
+                    db=db
                 )
                 logger.info(f"Filled missing habits for date {current_date}.")
             else:

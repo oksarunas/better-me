@@ -24,7 +24,7 @@ async def update_progress(progress: ProgressCreate, db: AsyncSession) -> None:
         await update_progress_status_in_db(
             db=db,
             date_obj=progress.date,
-            habit=progress.habit.value,  # ✅ Convert HabitEnum to string
+            habit=progress.habit.value,  # Convert HabitEnum to string
             updates={"status": progress.status},
         )
         logger.info(f"Updated progress for {progress.habit} on {progress.date}")
@@ -67,18 +67,23 @@ async def bulk_update_progress(data: BulkUpdate, db: AsyncSession) -> None:
 async def get_progress_by_date(date_obj: date, db: AsyncSession) -> List[ProgressRead]:
     try:
         rows = await fetch_all_progress_by_date(db, date_obj)
-        row_map = {r.habit: r for r in rows}  # ✅ Maps habits to rows
+        total_habits = len(ALLOWED_HABITS)
+        completed = sum(1 for r in rows if r.status)
+        completion_pct = round((completed / total_habits) * 100) if total_habits > 0 else 0
+
+        row_map = {r.habit: r for r in rows}
 
         results: List[ProgressRead] = []
         for habit in ALLOWED_HABITS:
             if habit in row_map:
-                row = row_map[habit]  # ✅ Assign `row` correctly
+                row = row_map[habit]
                 results.append(ProgressRead(
                     id=row.id,
                     date=row.date,
                     habit=row.habit,
                     status=row.status,
                     streak=row.streak,
+                    completion_pct=completion_pct,
                 ))
             else:
                 results.append(ProgressRead(
@@ -87,6 +92,7 @@ async def get_progress_by_date(date_obj: date, db: AsyncSession) -> List[Progres
                     habit=habit,
                     status=False,
                     streak=0,
+                    completion_pct=completion_pct,
                 ))
         return results
     except Exception as e:

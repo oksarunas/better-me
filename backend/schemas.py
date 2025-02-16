@@ -4,8 +4,16 @@ from typing import List, Optional, Dict, Tuple
 from enum import Enum
 
 
+class HabitCategory(str, Enum):
+    """Enumeration for habit categories."""
+    HEALTH = "Health"
+    PRODUCTIVITY = "Productivity"
+    PERSONAL_GROWTH = "Personal Growth"
+    NUTRITION = "Nutrition"
+
+
 class HabitEnum(str, Enum):
-    """Enumeration for allowed habits."""
+    """Enumeration for allowed habits with their categories."""
     SEVEN_HOURS_SLEEP = "7 hours of sleep"
     BREAKFAST = "Breakfast"
     WORKOUT = "Workout"
@@ -19,6 +27,21 @@ class HabitEnum(str, Enum):
     def list_values(cls) -> List[str]:
         """Return all habit values as a list."""
         return [habit.value for habit in cls]
+    
+    @classmethod
+    def get_category(cls, habit: str) -> str:
+        """Return the category for a given habit."""
+        categories = {
+            cls.SEVEN_HOURS_SLEEP: HabitCategory.HEALTH,
+            cls.WORKOUT: HabitCategory.HEALTH,
+            cls.CODE: HabitCategory.PRODUCTIVITY,
+            cls.READ: HabitCategory.PERSONAL_GROWTH,
+            cls.BREAKFAST: HabitCategory.NUTRITION,
+            cls.CREATINE: HabitCategory.NUTRITION,
+            cls.VITAMINS: HabitCategory.NUTRITION,
+            cls.NO_DRINK: HabitCategory.HEALTH,
+        }
+        return categories[cls(habit)].value
 
 
 class ProgressBase(BaseModel):
@@ -27,7 +50,7 @@ class ProgressBase(BaseModel):
     habit: HabitEnum
     status: bool
 
-    model_config = ConfigDict(from_attributes=True)  # ✅ Pydantic v2 format
+    model_config = ConfigDict(from_attributes=True)  # Pydantic v2 format
 
     @validator("date")
     def validate_date(cls, value: date) -> date:
@@ -47,15 +70,15 @@ class ProgressRead(ProgressBase):
     id: int
     streak: int = 0
 
-    model_config = ConfigDict(from_attributes=True)  # ✅ Corrected Pydantic v2 syntax
+    model_config = ConfigDict(from_attributes=True)  # Corrected Pydantic v2 syntax
 
-    # ❌ Removed `class Config:` to fix the error
+    # Removed `class Config:` to fix the error
 
 
 class ProgressUpdate(BaseModel):
     """Schema for updating progress."""
     status: Optional[bool] = None
-    habit: Optional[HabitEnum] = None  # ✅ Enforce valid habit values
+    habit: Optional[HabitEnum] = None  # Enforce valid habit values
 
 
 class BulkUpdate(BaseModel):
@@ -76,9 +99,9 @@ ALLOWED_HABITS: List[str] = HabitEnum.list_values()
 
 
 def build_progress_row(
-    row_map: Dict[Tuple[date, HabitEnum], ProgressRead],  # ✅ Enforce HabitEnum
+    row_map: Dict[Tuple[date, HabitEnum], ProgressRead],  # Enforce HabitEnum
     progress_date: date,
-    habit: HabitEnum  # ✅ Enforce HabitEnum
+    habit: HabitEnum  # Enforce HabitEnum
 ) -> ProgressRead:
     """
     Construct a ProgressRead row for the given date and habit.

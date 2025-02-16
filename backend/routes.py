@@ -68,7 +68,7 @@ async def create_or_update_progress(
 async def bulk_update(data: BulkUpdate, db: AsyncSession = Depends(get_db)):
     """Bulk update progress records."""
     try:
-        await bulk_update_progress(data, db, ALLOWED_HABITS)
+        await bulk_update_progress(data, db)
         return {"message": "Bulk update completed successfully"}
     except Exception as e:
         logger.error(f"Bulk update failed: {e}")
@@ -112,7 +112,7 @@ async def health_check(db: AsyncSession = Depends(get_db)) -> dict:
     Perform a health check for the application.
     """
     try:
-        await db.execute(select(1))  # ✅ Using ORM instead of raw SQL
+        await db.execute(select(1))  # Using ORM instead of raw SQL
         database_status = "healthy"
     except Exception as e:
         logger.error(f"Health check failed: {e}")
