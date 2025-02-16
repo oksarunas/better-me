@@ -11,8 +11,10 @@ export async function apiFetch<T>(
     endpoint: string,
     options: RequestInit = {}
 ): Promise<T> {
+    const token = localStorage.getItem('authToken');
     const headers = {
         "Content-Type": "application/json",
+        ...(token ? { "Authorization": `Bearer ${token}` } : {}),
         ...options.headers,
     };
 
@@ -25,9 +27,12 @@ export async function apiFetch<T>(
         }
 
         return await response.json();
-    } catch (error) {
-        console.error(`API Fetch Error on ${endpoint}:`, error);
-        throw error;
+    } catch (error: unknown) {
+        if (error instanceof Error) {
+            throw new Error(`API Fetch Error on ${endpoint}: ${error.message}`);
+        }
+        // Handle non-Error objects
+        throw new Error(`API Fetch Error on ${endpoint}: ${String(error)}`);
     }
 }
 

@@ -3,6 +3,7 @@ from datetime import date, datetime
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
+from auth import get_current_user
 from sqlalchemy.future import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.exc import SQLAlchemyError
@@ -33,10 +34,10 @@ router = APIRouter()
 # Weekly Progress Endpoint
 # -----------------------------
 @router.get("/progress/weekly", response_model=List[ProgressRead])
-async def weekly_progress(db: AsyncSession = Depends(get_db)):
+async def weekly_progress(db: AsyncSession = Depends(get_db), current_user = Depends(get_current_user)):
     """Get progress for the last 7 days."""
     try:
-        return await get_weekly_progress(db, ALLOWED_HABITS)
+        return await get_weekly_progress(db, ALLOWED_HABITS, current_user.id)
     except Exception as e:
         logger.error(f"Error in weekly_progress: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch weekly progress")
@@ -45,31 +46,31 @@ async def weekly_progress(db: AsyncSession = Depends(get_db)):
 # Progress Endpoint by Date
 # -----------------------------
 @router.get("/progress/{progress_date}", response_model=List[ProgressRead])
-async def get_progress(progress_date: date, db: AsyncSession = Depends(get_db)):
+async def get_progress(progress_date: date, db: AsyncSession = Depends(get_db), current_user = Depends(get_current_user)):
     """Get progress for a specific date."""
     try:
-        return await get_progress_by_date(progress_date, db)
+        return await get_progress_by_date(progress_date, db, current_user.id)
     except Exception as e:
         logger.error(f"Error in get_progress for {progress_date}: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch progress")
 
 @router.post("/progress", status_code=201)
 async def create_or_update_progress(
-    progress: ProgressCreate, db: AsyncSession = Depends(get_db)
+    progress: ProgressCreate, db: AsyncSession = Depends(get_db), current_user = Depends(get_current_user)
 ):
     """Create or update a progress record."""
     try:
-        await update_progress(progress, db)
+        await update_progress(progress, db, current_user.id)
         return {"message": "Progress updated successfully"}
     except Exception as e:
         logger.error(f"Error updating progress: {e}")
         raise HTTPException(status_code=500, detail="Failed to update progress")
 
 @router.put("/progress/bulk", status_code=200)
-async def bulk_update(data: BulkUpdate, db: AsyncSession = Depends(get_db)):
+async def bulk_update(data: BulkUpdate, db: AsyncSession = Depends(get_db), current_user = Depends(get_current_user)):
     """Bulk update progress records."""
     try:
-        await bulk_update_progress(data, db)
+        await bulk_update_progress(data, db, current_user.id)
         return {"message": "Bulk update completed successfully"}
     except Exception as e:
         logger.error(f"Bulk update failed: {e}")

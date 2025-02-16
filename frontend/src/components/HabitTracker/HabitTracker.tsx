@@ -74,8 +74,7 @@ export default function HabitTracker() {
         setProgress(Math.round((completedCount / habitsData.length) * 100))
         
       } catch (err) {
-        console.error("Error fetching data:", err)
-        setError("Failed to load data. Please try again.")
+        setError(err instanceof Error ? err.message : "Failed to load data. Please try again.")
       } finally {
         setLoading(false)
       }
@@ -97,7 +96,7 @@ export default function HabitTracker() {
         return updatedHabits;
       });
     } catch (err) {
-      console.error("Error updating habit:", err)
+      setError(err instanceof Error ? err.message : "Failed to update habit. Please try again.")
     }
   }
 

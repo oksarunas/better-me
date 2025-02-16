@@ -80,17 +80,29 @@ async def google_login(request: GoogleLoginRequest, db: AsyncSession = Depends(g
         }
     }
 
-async def get_current_user(token: str = Depends(oauth2_scheme)):
-    """Extract user ID from JWT token."""
+async def get_current_user(token: str = Depends(oauth2_scheme), db: AsyncSession = Depends(get_db)):
+    """Extract user ID from JWT token and return the user object."""
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         user_id: str = payload.get("sub")
         if user_id is None:
             raise HTTPException(status_code=401, detail="Invalid token payload.")
-        return user_id
+        
+        # Get user from database
+        from models import User
+        from sqlalchemy import select
+        
+        query = select(User).where(User.id == int(user_id))
+        result = await db.execute(query)
+        user = result.scalar_one_or_none()
+        
+        if user is None:
+            raise HTTPException(status_code=404, detail="User not found")
+            
+        return user
     except jwt.PyJWTError:
         raise HTTPException(status_code=401, detail="Could not validate credentials")
 
 @router.get("/protected")
-async def protected_route(user_id: str = Depends(get_current_user)):
-    return {"message": f"Hello, user {user_id}!"}
+async def protected_route(current_user = Depends(get_current_user)):
+    return {"message": f"Hello, {current_user.name or current_user.email}!"}

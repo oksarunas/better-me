@@ -16,7 +16,7 @@ const LandingPage: React.FC = () => {
   // Effect to handle navigation after successful authentication
   useEffect(() => {
     if (isAuthenticated) {
-      console.log('User is authenticated, navigating to tracker');
+
       navigate("/tracker");
     }
   }, [isAuthenticated, navigate]);
@@ -24,20 +24,20 @@ const LandingPage: React.FC = () => {
   // Callback for handling the Google credential response
   const handleCredentialResponse = async (response: any) => {
     try {
-      console.log('Google sign-in response:', response);
+
       const idToken = response.credential; // The Google ID token
       
       if (!idToken) {
-        console.error('No credential received from Google');
+
         return;
       }
 
-      console.log('Calling googleSignInApi with idToken:', idToken);
+
       const result = await googleSignInApi(idToken);
-      console.log('API response:', result);
+
 
       if (!result?.access_token || !result?.user) {
-        console.error('Invalid response from API:', result);
+
         return;
       }
 
@@ -50,7 +50,7 @@ const LandingPage: React.FC = () => {
       login(result.access_token, user);
       // Navigation will be handled by the useEffect above
     } catch (err) {
-      console.error("Google sign-in error:", err);
+
     }
   };
 
@@ -61,9 +61,9 @@ const LandingPage: React.FC = () => {
         client_id: CLIENT_ID,
         callback: handleCredentialResponse,
       });
-      console.info("Google Identity Services initialized on mount.");
+
     } else {
-      console.error("Google Identity Services not loaded on mount.");
+
     }
   }, [navigate]);
 
@@ -79,7 +79,7 @@ const LandingPage: React.FC = () => {
       });
       googleObj.accounts.id.prompt();
     } else {
-      console.error("Google Identity Services not loaded.");
+
     }
   };
 

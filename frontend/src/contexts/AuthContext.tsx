@@ -25,18 +25,18 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   // State for storing authentication token and user
   const [token, setToken] = useState<string | null>(() => {
     const storedToken = localStorage.getItem('authToken');
-    console.log('Initial token from localStorage:', storedToken);
+
     // Only return the token if it's a non-empty string
     return storedToken && storedToken !== "undefined" ? storedToken : null;
   });
   
   const [user, setUser] = useState<User | null>(() => {
     const storedUser = localStorage.getItem('user');
-    console.log('Initial user from localStorage:', storedUser);
+
     try {
       return storedUser ? JSON.parse(storedUser) : null;
     } catch (e) {
-      console.error('Error parsing stored user:', e);
+
       return null;
     }
   });
@@ -53,10 +53,10 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // Login function to set token and user
   const login = (newToken: string, userData: User) => {
-    console.log('Login called with:', { newToken, userData });
+  
     
     if (!newToken || newToken === "undefined") {
-      console.error('Invalid token provided to login');
+  
       return;
     }
     
@@ -68,12 +68,12 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setToken(newToken);
     setUser(userData);
     
-    console.log('State updated:', { token: newToken, user: userData });
+  
   };
 
   // Logout function to clear token and user
   const logout = () => {
-    console.log('Logout called');
+
     
     // Remove token and user from localStorage
     localStorage.removeItem('authToken');
@@ -83,7 +83,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     setToken(null);
     setUser(null);
     
-    console.log('State cleared');
+
   };
 
   // Create the context value
@@ -95,7 +95,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     logout
   };
 
-  console.log('AuthContext value:', value);
+
 
   return (
     <AuthContext.Provider value={value}>

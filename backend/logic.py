@@ -17,7 +17,7 @@ from schemas import ProgressCreate, ProgressRead, BulkUpdate, ALLOWED_HABITS, Ha
 logger = logging.getLogger(__name__)
 
 
-async def update_progress(progress: ProgressCreate, db: AsyncSession) -> None:
+async def update_progress(progress: ProgressCreate, db: AsyncSession, user_id: int) -> None:
     if progress.habit.value not in ALLOWED_HABITS:
         raise HTTPException(status_code=400, detail=f"Invalid habit: {progress.habit.value}")
     try:
@@ -25,6 +25,7 @@ async def update_progress(progress: ProgressCreate, db: AsyncSession) -> None:
             db=db,
             date_obj=progress.date,
             habit=progress.habit.value,  # Convert HabitEnum to string
+            user_id=user_id,
             updates={"status": progress.status},
         )
         logger.info(f"Updated progress for {progress.habit} on {progress.date}")
@@ -33,7 +34,7 @@ async def update_progress(progress: ProgressCreate, db: AsyncSession) -> None:
         raise HTTPException(status_code=500, detail="Failed to update progress")
 
 
-async def bulk_update_progress(data: BulkUpdate, db: AsyncSession) -> None:
+async def bulk_update_progress(data: BulkUpdate, db: AsyncSession, user_id: int) -> None:
     for update in data.updates:
         if update.habit.value not in ALLOWED_HABITS:
             raise HTTPException(status_code=400, detail=f"Invalid habit: {update.habit.value}")
@@ -41,8 +42,8 @@ async def bulk_update_progress(data: BulkUpdate, db: AsyncSession) -> None:
     try:
         for update in data.updates:
             existing_record = await db.execute(
-                text("SELECT id FROM progress WHERE date = :date AND habit = :habit"),
-                {"date": data.date, "habit": update.habit.value},
+                text("SELECT id FROM progress WHERE date = :date AND habit = :habit AND user_id = :user_id"),
+                {"date": data.date, "habit": update.habit.value, "user_id": user_id},
             )
             row = existing_record.fetchone()
 
@@ -53,8 +54,8 @@ async def bulk_update_progress(data: BulkUpdate, db: AsyncSession) -> None:
                 )
             else:
                 await db.execute(
-                    text("INSERT INTO progress (date, habit, status, streak) VALUES (:date, :habit, :status, 0)"),
-                    {"date": data.date, "habit": update.habit.value, "status": update.status},
+                    text("INSERT INTO progress (date, habit, status, streak, user_id) VALUES (:date, :habit, :status, 0, :user_id)"),
+                    {"date": data.date, "habit": update.habit.value, "status": update.status, "user_id": user_id},
                 )
 
         await db.commit()
@@ -64,9 +65,9 @@ async def bulk_update_progress(data: BulkUpdate, db: AsyncSession) -> None:
         raise HTTPException(status_code=500, detail="Failed to bulk update progress")
 
 
-async def get_progress_by_date(date_obj: date, db: AsyncSession) -> List[ProgressRead]:
+async def get_progress_by_date(date_obj: date, db: AsyncSession, user_id: int) -> List[ProgressRead]:
     try:
-        rows = await fetch_all_progress_by_date(db, date_obj)
+        rows = await fetch_all_progress_by_date(db, date_obj, user_id)
         total_habits = len(ALLOWED_HABITS)
         completed = sum(1 for r in rows if r.status)
         completion_pct = round((completed / total_habits) * 100) if total_habits > 0 else 0
@@ -101,7 +102,7 @@ async def get_progress_by_date(date_obj: date, db: AsyncSession) -> List[Progres
 
 
 async def get_weekly_progress(
-    db: AsyncSession, allowed_habits: List[str]
+    db: AsyncSession, allowed_habits: List[str], user_id: int
 ) -> List[ProgressRead]:
     """
     Fetch progress for the last 7 days for each habit in allowed_habits.
@@ -116,7 +117,7 @@ async def get_weekly_progress(
     try:
         today = date.today()
         week_start = today - timedelta(days=6)
-        rows = await fetch_all_progress_by_date(db, week_start, today)
+        rows = await fetch_all_progress_by_date(db, week_start, user_id, today)
         logger.debug(f"Fetched rows for weekly progress: {rows}")
 
         # Map rows with key as (date, habit) for quick lookup.
