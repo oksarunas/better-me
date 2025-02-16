@@ -5,6 +5,7 @@ interface User {
   id: string;
   email: string;
   name: string;
+  avatar_url?: string;  // Make it optional since not all users might have an avatar
   // Add other user properties as needed
 }
 
