@@ -16,9 +16,20 @@ interface AnalyticsSectionProps {
 }
 
 export default function AnalyticsSection({ analyticsData }: AnalyticsSectionProps) {
+  // Format date to show date and time
+  const formatDate = (dateStr: string) => {
+    const date = new Date(dateStr);
+    return date.toLocaleDateString('en-US', { 
+      month: 'short', 
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+  };
+
   // Prepare data for the stacked bar chart
   const stackedBarData = {
-    labels: analyticsData.dates,
+    labels: analyticsData.dates.map(formatDate),
     datasets: Object.entries(analyticsData.stackedData || {}).map(([category, data]) => {
       const categoryColors: Record<string, string> = {
         Health: "rgba(75,192,192,0.8)",
@@ -41,17 +52,30 @@ export default function AnalyticsSection({ analyticsData }: AnalyticsSectionProp
         display: true,
         text: "Habits Completed by Category",
       },
+      tooltip: {
+        callbacks: {
+          title: (context: any) => {
+            return formatDate(analyticsData.dates[context[0].dataIndex]);
+          }
+        }
+      }
     },
     responsive: true,
     scales: {
-      x: { stacked: true },
+      x: { 
+        stacked: true,
+        ticks: {
+          maxRotation: 45,
+          minRotation: 45
+        }
+      },
       y: { stacked: true, beginAtZero: true },
     },
   };
 
   // Prepare data for the line chart
   const lineChartData = {
-    labels: analyticsData.dates,
+    labels: analyticsData.dates.map(formatDate),
     datasets: [
       {
         label: "Overall Completion Trend (%)",
@@ -69,9 +93,22 @@ export default function AnalyticsSection({ analyticsData }: AnalyticsSectionProp
         display: true,
         text: "Overall Habit Completion Trend",
       },
+      tooltip: {
+        callbacks: {
+          title: (context: any) => {
+            return formatDate(analyticsData.dates[context[0].dataIndex]);
+          }
+        }
+      }
     },
     responsive: true,
     scales: {
+      x: {
+        ticks: {
+          maxRotation: 45,
+          minRotation: 45
+        }
+      },
       y: { beginAtZero: true, max: 100 },
     },
   };

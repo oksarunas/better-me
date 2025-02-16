@@ -325,7 +325,22 @@ export default function HabitTracker() {
         <div className="space-y-6">
           <Card className={theme === "dark" ? "bg-slate-800/50 border-slate-700" : "bg-white"}>
             <CardHeader>
-              <CardTitle className={theme === "dark" ? "text-white" : "text-slate-900"}>Monthly Overview</CardTitle>
+              <div className="flex justify-between items-center">
+                <CardTitle className={theme === "dark" ? "text-white" : "text-slate-900"}>Monthly Overview</CardTitle>
+                <div className="flex items-center gap-2">
+                  <span className={`text-sm ${theme === "dark" ? "text-slate-400" : "text-slate-500"}`}>
+                    {new Date().toLocaleTimeString('en-US', { 
+                      hour12: false,
+                      hour: '2-digit',
+                      minute: '2-digit'
+                    })}
+                  </span>
+                  {selectedDate && 
+                   new Date(selectedDate).toDateString() === new Date().toDateString() && (
+                    <span className="text-green-500 text-sm">Today</span>
+                  )}
+                </div>
+              </div>
             </CardHeader>
             <CardContent>
               <Calendar
@@ -333,6 +348,21 @@ export default function HabitTracker() {
                 selected={selectedDate}
                 onSelect={setSelectedDate}
                 className={theme === "dark" ? "text-white" : "text-slate-900"}
+                modifiers={{
+                  today: new Date(),
+                  selected: selectedDate
+                }}
+                modifiersStyles={{
+                  today: {
+                    fontWeight: 'bold',
+                    border: '2px solid #22c55e'
+                  },
+                  selected: {
+                    backgroundColor: '#22c55e',
+                    color: 'white',
+                    borderRadius: '50%'
+                  }
+                }}
               />
             </CardContent>
           </Card>
@@ -371,7 +401,9 @@ export default function HabitTracker() {
             <Card className={theme === "dark" ? "bg-slate-800/50 border-slate-700" : "bg-white"}>
               <CardHeader className="pb-2">
                 <CardTitle className={`text-sm ${theme === "dark" ? "text-slate-400" : "text-slate-500"}`}>
-                  Today's Progress
+                  {selectedDate && new Date(selectedDate).toDateString() === new Date().toDateString()
+                    ? "Today's Progress"
+                    : `Progress for ${selectedDate?.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-2">
