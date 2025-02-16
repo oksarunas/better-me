@@ -48,6 +48,7 @@ export default function HabitTracker() {
   const [error, setError] = React.useState<string | null>(null)
   const [backendHabits, setBackendHabits] = React.useState<HabitType[]>([])
   const [weeklyData, setWeeklyData] = React.useState<WeeklyData[]>([])
+  const [analyticsData, setAnalyticsData] = React.useState<any>(null)
 
   React.useEffect(() => {
     const fetchData = async () => {
@@ -67,6 +68,7 @@ export default function HabitTracker() {
         
         setBackendHabits(habitsData)
         setWeeklyData(weeklyDataResponse)
+        setAnalyticsData(analyticsDataResponse)
         
         const completedCount = habitsData.filter((h: HabitType) => h.status).length
         setProgress(Math.round((completedCount / habitsData.length) * 100))
@@ -85,9 +87,15 @@ export default function HabitTracker() {
   const handleToggleHabit = async (habitId: number, newStatus: boolean) => {
     try {
       await updateHabitApi(habitId, { status: newStatus })
-      setBackendHabits(habits => habits.map(h => 
-        h.id === habitId ? { ...h, status: newStatus } : h
-      ))
+      setBackendHabits(habits => {
+        const updatedHabits = habits.map(h => 
+          h.id === habitId ? { ...h, status: newStatus } : h
+        );
+        // Update progress percentage
+        const completedCount = updatedHabits.filter(h => h.status).length;
+        setProgress(Math.round((completedCount / updatedHabits.length) * 100));
+        return updatedHabits;
+      });
     } catch (err) {
       console.error("Error updating habit:", err)
     }
@@ -132,6 +140,11 @@ export default function HabitTracker() {
 
   const addHabit = (newHabit: Omit<HabitType, 'id' | 'streak'>) => {
     setBackendHabits([...backendHabits, { ...newHabit, streak: 0, id: Math.floor(Math.random() * 1000) }])
+  }
+
+  const getHabitCompletionCount = (habit: string) => {
+    if (!analyticsData?.stackedData?.[habit]) return 0;
+    return analyticsData.stackedData[habit].reduce((sum: number, count: number) => sum + count, 0);
   }
 
   return (
@@ -215,7 +228,7 @@ export default function HabitTracker() {
                     </form>
                   </DialogContent>
                 </Dialog>
-                <Badge variant="secondary">4 of 8 Completed</Badge>
+                <Badge variant="secondary">{progress}% Completed</Badge>
               </div>
             </CardHeader>
             <CardContent className="grid gap-4">
@@ -269,7 +282,7 @@ export default function HabitTracker() {
                       <div className="flex items-center gap-2">
                         <Target className={`h-4 w-4 ${theme === "dark" ? "text-slate-400" : "text-slate-500"}`} />
                         <span className={`text-sm ${theme === "dark" ? "text-slate-400" : "text-slate-500"}`}>
-                          {habit.streak}/{habit.goal}
+                          {getHabitCompletionCount(habit.label)}/30
                         </span>
                       </div>
                       <habit.icon className={`h-5 w-5 ${theme === "dark" ? "text-slate-400" : "text-slate-500"}`} />

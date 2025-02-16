@@ -13,6 +13,7 @@ from logic import (
     get_weekly_progress,
     update_progress,
     bulk_update_progress,
+    recalc_all_streaks,
 )
 from schemas import (
     ProgressCreate,
@@ -95,6 +96,15 @@ async def patch_progress(
 
             await db.commit()
             await db.refresh(record)
+            
+            # Run fix.py to ensure data consistency and recalculate streaks
+            from fix import fill_missing_data, fetch_all_habits
+            from logic import recalc_all_streaks
+            
+            allowed_habits = await fetch_all_habits(db)
+            await fill_missing_data(db, allowed_habits)
+            await recalc_all_streaks(db)
+            
             return record
 
         raise HTTPException(status_code=400, detail="No fields provided for update")
