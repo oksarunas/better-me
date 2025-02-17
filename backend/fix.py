@@ -103,7 +103,13 @@ async def main():
 
             # Fill missing data
             logger.info("Filling missing data...")
-            await fill_missing_data(db=db, allowed_habits=allowed_habits)
+            # Get the user ID from the database - we'll use the first user as default
+            result = await db.execute("SELECT id FROM users LIMIT 1")
+            user_id = result.scalar_one()
+            if not user_id:
+                raise Exception("No users found in the database")
+            
+            await fill_missing_data(db=db, allowed_habits=allowed_habits, user_id=user_id)
 
         # Recalculate streaks
         logger.info("Starting streak recalculation...")

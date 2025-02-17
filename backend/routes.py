@@ -110,9 +110,6 @@ async def patch_progress(
             
             # Fill missing data with current user's ID
             await fill_missing_data(db, ALLOWED_HABITS, current_user.id)
-            
-            allowed_habits = await fetch_all_habits(db)
-            await fill_missing_data(db, allowed_habits)
             await recalc_all_streaks(db)
             
             return record
