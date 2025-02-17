@@ -32,9 +32,155 @@
          data-auto_select="false"
          data-itp_support="true">
     </div>
+    <meta name="google-adsense-account" content="ca-pub-7392642468653150">
+    <!-- Google Consent Mode -->
+    <script>
+      // Set default consent state
+      window.dataLayer = window.dataLayer || [];
+      function gtag() { dataLayer.push(arguments); }
+      
+      gtag('consent', 'default', {
+        'ad_storage': 'denied',
+        'analytics_storage': 'denied',
+        'functionality_storage': 'denied',
+        'personalization_storage': 'denied',
+        'security_storage': 'granted'
+      });
+
+      // Custom CMP implementation
+      function showConsentBanner() {
+        const banner = document.createElement('div');
+        banner.id = 'consent-banner';
+        banner.innerHTML = `
+          <div style="position: fixed; bottom: 0; left: 0; right: 0; background: rgb(18, 18, 18); padding: 0.75rem; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); z-index: 9999; display: flex; justify-content: space-between; align-items: center; font-family: 'Inter', sans-serif;">
+            <div style="flex: 1; margin-right: 1rem;">
+              <p style="margin: 0; font-size: 0.9rem; color: #fff;">🍪 This site uses cookies to improve your experience.</p>
+            </div>
+            <div style="display: flex; gap: 0.5rem;">
+              <button onclick="handleConsent('accept')" style="background: #4CAF50; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-size: 0.9rem;">Accept All</button>
+              <button onclick="handleConsent('manage')" style="background: transparent; border: 1px solid #4CAF50; color: #4CAF50; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer; font-size: 0.9rem;">Manage</button>
+            </div>
+          </div>
+        `;
+        document.body.appendChild(banner);
+      }
+
+      function handleConsent(action) {
+        if (action === 'accept') {
+          gtag('consent', 'update', {
+            'ad_storage': 'granted',
+            'analytics_storage': 'granted',
+            'functionality_storage': 'granted',
+            'personalization_storage': 'granted',
+            'security_storage': 'granted'
+          });
+          localStorage.setItem('consentChoice', 'accepted');
+        } else if (action === 'manage') {
+          // Open detailed consent management interface
+          showConsentManager();
+        }
+        document.getElementById('consent-banner').remove();
+      }
+
+      function showConsentManager() {
+        const manager = document.createElement('div');
+        manager.id = 'consent-manager';
+        manager.innerHTML = `
+          <div style="position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #fff; padding: 2rem; box-shadow: 0 2px 20px rgba(0,0,0,0.1); z-index: 10000; max-width: 500px; width: 90%; border-radius: 8px; font-family: 'Inter', sans-serif;">
+            <h2 style="margin-top: 0;">Cookie Preferences</h2>
+            <div style="margin: 1rem 0;">
+              <label style="display: block; margin: 0.5rem 0;">
+                <input type="checkbox" id="analytics" name="analytics"> Analytics cookies
+              </label>
+              <label style="display: block; margin: 0.5rem 0;">
+                <input type="checkbox" id="advertising" name="advertising"> Advertising cookies
+              </label>
+              <label style="display: block; margin: 0.5rem 0;">
+                <input type="checkbox" id="functional" name="functional"> Functional cookies
+              </label>
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 1rem; margin-top: 1rem;">
+              <button onclick="savePreferences()" style="background: #4CAF50; color: white; border: none; padding: 0.5rem 1rem; border-radius: 4px; cursor: pointer;">Save Preferences</button>
+            </div>
+          </div>
+        `;
+        document.body.appendChild(manager);
+      }
+
+      function savePreferences() {
+        const analytics = document.getElementById('analytics').checked;
+        const advertising = document.getElementById('advertising').checked;
+        const functional = document.getElementById('functional').checked;
+
+        gtag('consent', 'update', {
+          'analytics_storage': analytics ? 'granted' : 'denied',
+          'ad_storage': advertising ? 'granted' : 'denied',
+          'functionality_storage': functional ? 'granted' : 'denied',
+          'personalization_storage': functional ? 'granted' : 'denied',
+          'security_storage': 'granted'
+        });
+
+        localStorage.setItem('consentChoice', 'customized');
+        localStorage.setItem('consentPreferences', JSON.stringify({
+          analytics, advertising, functional
+        }));
+
+        document.getElementById('consent-manager').remove();
+      }
+
+      // Check if user has already made a choice
+      window.addEventListener('load', function() {
+        if (!localStorage.getItem('consentChoice')) {
+          showConsentBanner();
+        }
+      });
+    </script>
+    <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7392642468653150"
+         crossorigin="anonymous"></script>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>
     <div id="root"></div>
+    
+    <!-- Footer Advertisement -->
+    <div id="footer-ad" style="width: 100%; text-align: center; padding: 1rem 0; background: rgb(18, 18, 18);">
+      <ins class="adsbygoogle"
+           style="display:block"
+           data-ad-client="ca-pub-7392642468653150"
+           data-ad-slot="5546970609"
+           data-ad-format="auto"
+           data-full-width-responsive="true"></ins>
+    </div>
+    <script>
+      // Initialize ad
+      (adsbygoogle = window.adsbygoogle || []).push({});
+    </script>
+
+    <!-- Ad position adjustment for consent banner -->
+    <script>
+      // Adjust ad position when consent banner is shown/hidden
+      const adjustAdPosition = () => {
+        const consentBanner = document.getElementById('consent-banner');
+        const footerAd = document.getElementById('footer-ad');
+        if (consentBanner && footerAd) {
+          footerAd.style.bottom = consentBanner.offsetHeight + 'px';
+        } else {
+          footerAd.style.bottom = '0';
+        }
+      };
+
+      // Watch for consent banner changes
+      const observer = new MutationObserver((mutations) => {
+        adjustAdPosition();
+      });
+
+      observer.observe(document.body, {
+        childList: true,
+        subtree: true
+      });
+
+      // Initial adjustment
+      window.addEventListener('load', adjustAdPosition);
+    </script>
   </body>
 </html>
