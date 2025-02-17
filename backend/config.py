@@ -50,7 +50,13 @@ class Config:
     logger.info(f"CORS Allowed Origins: {ALLOWED_ORIGINS}")
     
     if not ALLOWED_ORIGINS:
-        ALLOWED_ORIGINS = ["http://localhost:3001", "http://127.0.0.1:3000", "http://localhost:8001"]
+        ALLOWED_ORIGINS = [
+            "http://localhost:3000",
+            "http://127.0.0.1:3000",
+            "http://localhost:3001",
+            "http://127.0.0.1:3001",
+            "http://localhost:8001"
+        ]
     
     if "*" in ALLOWED_ORIGINS and not DEBUG:
         logger.warning("ALLOWED_ORIGINS set to '*'. This is insecure for production.")

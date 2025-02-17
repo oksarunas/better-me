@@ -63,7 +63,7 @@ const Profile: React.FC = () => {
 
       // Only make the API call if there are changes
       if (Object.entries(updateData).some(([key, value]) => value !== undefined)) {
-        const response = await updateProfile(updateData);
+        await updateProfile(updateData);
         // TODO: Update user context with new data
       }
 

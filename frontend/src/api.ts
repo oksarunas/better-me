@@ -1,37 +1,28 @@
     import { WeeklyData, RawHabit, Habit } from './types';
-const apiUrl = process.env.REACT_APP_API_BASE_URL || "http://localhost:8001"; // Fallback for development
+import { axiosInstance } from './api/axios-config';
+import type { AxiosRequestConfig } from 'axios';
+
 /**
  * Generic function to fetch data from the API.
  * @param endpoint - The API endpoint to call.
- * @param options - Fetch options (method, headers, body, etc.).
+ * @param options - Axios request config.
  * @returns The parsed JSON response.
  * @throws Throws an error if the request fails.
  */
 export async function apiFetch<T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: AxiosRequestConfig<any> = {}
 ): Promise<T> {
-    const token = localStorage.getItem('authToken');
-    const headers = {
-        "Content-Type": "application/json",
-        ...(token ? { "Authorization": `Bearer ${token}` } : {}),
-        ...options.headers,
-    };
-
     try {
-        const response = await fetch(`${apiUrl}${endpoint}`, { ...options, headers });
-
-        if (!response.ok) {
-            const error = await response.json().catch(() => ({}));
-            throw new Error(error.message || `Error: ${response.status} ${response.statusText}`);
-        }
-
-        return await response.json();
+        const response = await axiosInstance.request<T>({
+            url: endpoint,
+            ...options
+        });
+        return response.data;
     } catch (error: unknown) {
         if (error instanceof Error) {
             throw new Error(`API Fetch Error on ${endpoint}: ${error.message}`);
         }
-        // Handle non-Error objects
         throw new Error(`API Fetch Error on ${endpoint}: ${String(error)}`);
     }
 }
@@ -61,7 +52,7 @@ export async function updateHabitApi(
 
     return apiFetch<Habit>(`/progress/${habitId}`, {
         method: "PATCH",
-        body: JSON.stringify(body),
+        data: body,
     });
 }
 
@@ -107,7 +98,7 @@ export async function googleSignInApi(idToken: string): Promise<{
 }> {
     return apiFetch("/auth/google", {
         method: "POST",
-        body: JSON.stringify({ id_token: idToken }),
+        data: { id_token: idToken },
     });
 }
 

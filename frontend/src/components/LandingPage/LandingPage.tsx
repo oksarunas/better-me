@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowRight, CheckCircle, LineChart, Zap } from 'lucide-react';
 import { Button } from "../../components/ui/Button";
@@ -16,28 +16,26 @@ const LandingPage: React.FC = () => {
   // Effect to handle navigation after successful authentication
   useEffect(() => {
     if (isAuthenticated) {
-
       navigate("/tracker");
     }
   }, [isAuthenticated, navigate]);
 
   // Callback for handling the Google credential response
-  const handleCredentialResponse = async (response: any) => {
+  const handleCredentialResponse = useCallback(async (response: any) => {
+    console.log('Google sign-in response received:', { hasCredential: !!response?.credential });
     try {
-
       const idToken = response.credential; // The Google ID token
       
       if (!idToken) {
-
+        console.error('No ID token received from Google');
         return;
       }
 
-
+      console.log('Sending ID token to backend...');
       const result = await googleSignInApi(idToken);
 
-
       if (!result?.access_token || !result?.user) {
-
+        console.error('Invalid response from backend:', result);
         return;
       }
 
@@ -47,39 +45,110 @@ const LandingPage: React.FC = () => {
         id: result.user.id.toString()
       };
 
+      console.log('Google sign-in successful, logging in user');
       login(result.access_token, user);
       // Navigation will be handled by the useEffect above
     } catch (err) {
-
+      console.error('Error during Google sign-in:', err);
+      if (err instanceof Error) {
+        console.error('Error details:', err.message);
+      }
+      // Log the full error object for debugging
+      console.error('Full error object:', JSON.stringify(err, null, 2));
     }
+  }, [login]);
+
+  // Function to check if Google client is available
+  const isGoogleClientAvailable = () => {
+    return !!(window as any).google?.accounts?.id;
   };
 
-  // Initialize the Google client when the component mounts, if available.
-  useEffect(() => {
-    if ((window as any).google && (window as any).google.accounts && (window as any).google.accounts.id) {
+  // Function to initialize Google client with proper error handling
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const initializeGoogleClient = () => {
+    if (!isGoogleClientAvailable()) {
+      console.error('Google client not available');
+      return false;
+    }
+
+    try {
       (window as any).google.accounts.id.initialize({
         client_id: CLIENT_ID,
         callback: handleCredentialResponse,
+        auto_select: false,
+        cancel_on_tap_outside: true,
+        prompt_parent_id: 'g_id_onload', // Element ID where the button will be rendered
+        context: 'signin',
+        itp_support: true, // Enable Intelligent Tracking Prevention support
+        use_fedcm_for_prompt: true // Use the new FedCM API when available
       });
-
-    } else {
-
+      return true;
+    } catch (err) {
+      console.error('Error initializing Google client:', err);
+      return false;
     }
-  }, [navigate]);
+  };
 
-  // Custom handler to trigger the Google sign-in prompt,
-  // reinitializing the client in case it wasn’t set up earlier.
+  // Initialize the Google client when the component mounts
+  useEffect(() => {
+    const initializeGoogleClient = () => {
+      if (!(window as any).google?.accounts?.id) {
+        console.log('Waiting for Google client to load...');
+        return;
+      }
+
+      try {
+        console.log('Initializing Google client...');
+        (window as any).google.accounts.id.initialize({
+          client_id: CLIENT_ID,
+          callback: handleCredentialResponse,
+          auto_select: false,
+          cancel_on_tap_outside: true
+        });
+
+        // Render the button
+        (window as any).google.accounts.id.renderButton(
+          document.getElementById('googleSignInButton'),
+          { theme: 'outline', size: 'large' }
+        );
+
+        console.log('Google client initialized successfully');
+      } catch (err) {
+        console.error('Error initializing Google client:', err);
+      }
+    };
+
+    // Try to initialize immediately
+    initializeGoogleClient();
+
+    // Also set up a retry mechanism
+    const retryInterval = setInterval(() => {
+      if ((window as any).google?.accounts?.id) {
+        initializeGoogleClient();
+        clearInterval(retryInterval);
+      }
+    }, 1000);
+
+    // Cleanup
+    return () => clearInterval(retryInterval);
+  }, [handleCredentialResponse]);
+
+  // Custom handler to trigger the Google sign-in prompt
   const handleGoogleSignIn = () => {
     const googleObj = (window as any).google;
-    if (googleObj && googleObj.accounts && googleObj.accounts.id) {
-      // Reinitialize to ensure the client_id is set
-      googleObj.accounts.id.initialize({
-        client_id: CLIENT_ID,
-        callback: handleCredentialResponse,
+    if (!googleObj?.accounts?.id) {
+      console.error('Google client not available');
+      return;
+    }
+    
+    try {
+      googleObj.accounts.id.prompt((notification: { isNotDisplayed: () => any; isSkippedMoment: () => any; }) => {
+        if (notification.isNotDisplayed() || notification.isSkippedMoment()) {
+          console.log('Google Sign-In prompt not displayed or skipped');
+        }
       });
-      googleObj.accounts.id.prompt();
-    } else {
-
+    } catch (err) {
+      console.error('Error showing Google Sign-In prompt:', err);
     }
   };
 
@@ -95,9 +164,15 @@ const LandingPage: React.FC = () => {
             Track your habits and build a better version of yourself, one day at a time.
           </p>
           <div className="flex flex-col items-center space-y-4">
-            {/* "Get Started" Button */}
-            {/* Custom Google Sign-In Button */}
-            <Button size="lg" className="group" onClick={handleGoogleSignIn}>
+            {/* Google Sign-In Button Container */}
+            <div id="googleSignInButton" className="mt-4"></div>
+            {/* Fallback button in case Google button fails to render */}
+            <Button 
+              size="lg" 
+              className="group mt-4 hidden" 
+              onClick={handleGoogleSignIn}
+              id="fallbackGoogleButton"
+            >
               Sign in with Google
               <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
             </Button>

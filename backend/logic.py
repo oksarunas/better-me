@@ -87,12 +87,26 @@ async def get_progress_by_date(date_obj: date, db: AsyncSession, user_id: int) -
                     completion_pct=completion_pct,
                 ))
             else:
+                # Create a new record for missing habit
+                await db.execute(
+                    text("INSERT INTO progress (date, habit, status, streak, user_id) VALUES (:date, :habit, :status, 0, :user_id)"),
+                    {"date": date_obj, "habit": habit, "status": False, "user_id": user_id},
+                )
+                await db.commit()
+                
+                # Fetch the newly created record
+                new_record = await db.execute(
+                    text("SELECT id, date, habit, status, streak FROM progress WHERE date = :date AND habit = :habit AND user_id = :user_id"),
+                    {"date": date_obj, "habit": habit, "user_id": user_id},
+                )
+                row = new_record.fetchone()
+                
                 results.append(ProgressRead(
-                    id=0,
-                    date=date_obj,
-                    habit=habit,
-                    status=False,
-                    streak=0,
+                    id=row[0],
+                    date=row[1],
+                    habit=row[2],
+                    status=row[3],
+                    streak=row[4],
                     completion_pct=completion_pct,
                 ))
         return results

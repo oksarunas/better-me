@@ -1,13 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../../contexts/AuthContext';
 import { Card } from '../ui/Card';
-import { BarChart as BarChartIcon, Calendar, LineChart as LineChartIcon } from 'lucide-react';
+import { Calendar } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar } from 'recharts';
 import { getAnalytics, AnalyticsData } from '../../api/analytics';
 import { format, subDays } from 'date-fns';
 
 const Analytics: React.FC = () => {
-  const { user } = useAuth();
+  // Auth context might be needed in the future
+  useAuth();
   const [analyticsData, setAnalyticsData] = useState<AnalyticsData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

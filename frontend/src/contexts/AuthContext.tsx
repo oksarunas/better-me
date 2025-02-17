@@ -54,22 +54,36 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
   // Login function to set token and user
   const login = (newToken: string, userData: User) => {
-  
+    console.log('Attempting to login with token:', { hasToken: !!newToken, userData });
     
     if (!newToken || newToken === "undefined") {
-  
+      console.error('Invalid token received during login');
+      return;
+    }
+
+    if (!userData || !userData.id) {
+      console.error('Invalid user data received during login');
       return;
     }
     
-    // Store token and user in localStorage
-    localStorage.setItem('authToken', newToken);
-    localStorage.setItem('user', JSON.stringify(userData));
-    
-    // Update state
-    setToken(newToken);
-    setUser(userData);
-    
-  
+    try {
+      // Store token and user in localStorage
+      localStorage.setItem('authToken', newToken);
+      localStorage.setItem('user', JSON.stringify(userData));
+      
+      // Update state
+      setToken(newToken);
+      setUser(userData);
+      
+      console.log('Login successful, state updated');
+    } catch (error) {
+      console.error('Error during login:', error);
+      // Clear any partial state
+      localStorage.removeItem('authToken');
+      localStorage.removeItem('user');
+      setToken(null);
+      setUser(null);
+    }
   };
 
   // Logout function to clear token and user

@@ -80,15 +80,21 @@ async def bulk_update(data: BulkUpdate, db: AsyncSession = Depends(get_db), curr
 async def patch_progress(
     progress_id: int,
     progress_update: ProgressUpdate,
-    db: AsyncSession = Depends(get_db)
+    db: AsyncSession = Depends(get_db),
+    current_user = Depends(get_current_user)
 ):
     """Partially update a progress record by its ID."""
     try:
-        result = await db.execute(select(Progress).where(Progress.id == progress_id))
+        result = await db.execute(
+            select(Progress).where(
+                Progress.id == progress_id,
+                Progress.user_id == current_user.id
+            )
+        )
         record = result.scalars().first()
         
         if not record:
-            raise HTTPException(status_code=404, detail="Progress record not found")
+            raise HTTPException(status_code=404, detail="Progress record not found or does not belong to current user")
 
         updates = progress_update.dict(exclude_unset=True)
         if updates:
@@ -101,6 +107,9 @@ async def patch_progress(
             # Run fix.py to ensure data consistency and recalculate streaks
             from fix import fill_missing_data, fetch_all_habits
             from logic import recalc_all_streaks
+            
+            # Fill missing data with current user's ID
+            await fill_missing_data(db, ALLOWED_HABITS, current_user.id)
             
             allowed_habits = await fetch_all_habits(db)
             await fill_missing_data(db, allowed_habits)

@@ -1,8 +1,9 @@
 import axios from 'axios';
+import type { InternalAxiosRequestConfig } from 'axios';
 
 // Create an axios instance with custom config
 export const axiosInstance = axios.create({
-  baseURL: 'http://localhost:8001',
+  baseURL: process.env.REACT_APP_API_BASE_URL || 'http://localhost:8001/api',
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
@@ -11,31 +12,40 @@ export const axiosInstance = axios.create({
 
 // Add a request interceptor to add the auth token
 axiosInstance.interceptors.request.use(
-  (config) => {
+  (config: InternalAxiosRequestConfig) => {
     const token = localStorage.getItem('authToken');
-    if (token) {
-      return {
-        ...config,
-        headers: {
-          ...config.headers,
-          Authorization: `Bearer ${token}`
-        }
-      };
+    if (token && config.headers) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
   (error) => Promise.reject(error)
 );
 
-// Add response interceptor
+// Add response interceptor for better error handling
 axiosInstance.interceptors.response.use(
   (response) => response,
   (error) => {
+    // Handle 401 Unauthorized errors
     if (error.response?.status === 401) {
       localStorage.removeItem('authToken');
       localStorage.removeItem('user');
-      window.location.href = '/login';
+      window.location.href = '/'; // Redirect to login page
     }
-    return Promise.reject(error);
+
+    if (error.response) {
+      // The request was made and the server responded with a status code
+      // that falls out of the range of 2xx
+      console.error('Response error:', error.response.data);
+      throw new Error(error.response.data.message || 'An error occurred');
+    } else if (error.request) {
+      // The request was made but no response was received
+      console.error('Request error:', error.request);
+      throw new Error('No response received from server');
+    } else {
+      // Something happened in setting up the request that triggered an Error
+      console.error('Error:', error.message);
+      throw error;
+    }
   }
 );

@@ -5,6 +5,7 @@ import { Card } from "../ui/Card";
 import { Input } from "../ui/Input";
 import { useAuth } from '../../contexts/AuthContext';
 import { ArrowLeft } from 'lucide-react';
+import axios from 'axios';
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
@@ -15,8 +16,9 @@ const Login: React.FC = () => {
   const [name, setName] = useState('');
   const [error, setError] = useState('');
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    console.log('Form submission started');
     setError('');
 
     const endpoint = isRegistering ? '/api/auth/register' : '/api/auth/login';
@@ -24,24 +26,37 @@ const Login: React.FC = () => {
       ? { email, password, name }
       : { email, password };
 
+    console.log('Sending request to:', endpoint);
+    
     try {
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
+      // Explicitly prevent default again to ensure it works across browsers
+      e.preventDefault();
+      
+      try {
+        const response = await axios.post(endpoint, payload);
+        console.log('Response status:', response.status);
+        
+        if (response.status >= 400) {
+          const errorData = response.data;
+          console.error('Login error:', errorData);
+          throw new Error(errorData.detail || 'Authentication failed');
+        }
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Authentication failed');
+        const data = response.data;
+        console.log('Login successful, navigating to tracker');
+        login(data.access_token, data.user);
+        navigate('/tracker');
+      } catch (error) {
+        if (axios.isAxiosError(error) && error.response) {
+          console.error('Login error:', error.response.data);
+          throw new Error(error.response.data.detail || 'Authentication failed');
+        } else {
+          console.error('Network error:', error);
+          throw new Error('Network error occurred');
+        }
       }
-
-      const data = await response.json();
-      login(data.access_token, data.user);
-      navigate('/tracker');
     } catch (err) {
+      console.error('Login error:', err);
       setError(err instanceof Error ? err.message : 'Authentication failed');
     }
   };
@@ -67,7 +82,7 @@ const Login: React.FC = () => {
           </div>
         )}
         
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-4" noValidate>
           {isRegistering && (
             <div>
               <label htmlFor="name" className="block text-sm font-medium text-gray-400 mb-1">
@@ -115,7 +130,17 @@ const Login: React.FC = () => {
             />
           </div>
           
-          <Button type="submit" className="w-full">
+          <Button 
+            type="submit" 
+            className="w-full" 
+            onClick={(e) => {
+              console.log('Button clicked directly');
+              // Only handle click if form submission fails
+              if (!e.defaultPrevented) {
+                handleSubmit(e as unknown as React.FormEvent<HTMLFormElement>);
+              }
+            }}
+          >
             {isRegistering ? 'Create Account' : 'Sign In'}
           </Button>
         </form>

@@ -32,7 +32,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-async def fill_missing_data(db, allowed_habits):
+async def fill_missing_data(db, allowed_habits, user_id: int):
     """Ensure all habits are present for every date from the earliest DB date up to today."""
     try:
         # 1. Find the earliest date in the DB
@@ -73,7 +73,8 @@ async def fill_missing_data(db, allowed_habits):
                 bulk_data = BulkUpdate(date=current_date, updates=updates)
                 await bulk_update_progress(
                     data=bulk_data,
-                    db=db
+                    db=db,
+                    user_id=user_id
                 )
                 logger.info(f"Filled missing habits for date {current_date}.")
             else:

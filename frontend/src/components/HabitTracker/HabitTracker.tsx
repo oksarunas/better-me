@@ -13,8 +13,9 @@ import {
   Code,
   Coffee,
   Book,
-  NutIcon as Vitamins,
-  Droplets,
+  // Keeping imports commented for future use
+  // NutIcon as Vitamins,
+  // Droplets,
   Trophy,
   Flame,
   Filter,
@@ -39,7 +40,7 @@ const listItemVariants = {
 }
 
 export default function HabitTracker() {
-  const { logout } = useAuth()
+  useAuth()
   const [selectedDate, setSelectedDate] = React.useState<Date | undefined>(new Date())
   const [progress, setProgress] = React.useState(50)
   const [filter, setFilter] = React.useState("all")
@@ -47,7 +48,7 @@ export default function HabitTracker() {
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
   const [backendHabits, setBackendHabits] = React.useState<HabitType[]>([])
-  const [weeklyData, setWeeklyData] = React.useState<WeeklyData[]>([])
+  const [, setWeeklyData] = React.useState<WeeklyData[]>([])
   const [analyticsData, setAnalyticsData] = React.useState<any>(null)
 
   React.useEffect(() => {
