@@ -25,6 +25,9 @@ const NavBar: React.FC = () => {
               <Link to="/analytics" className="text-gray-300 hover:text-white transition-colors">
                 Analytics
               </Link>
+              <Link to="/achievements" className="text-gray-300 hover:text-white transition-colors">
+                Achievements
+              </Link>
               <Link to="/profile" className="text-gray-300 hover:text-white transition-colors">
                 Profile
               </Link>

@@ -28,7 +28,9 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "../ui/dialog"
 import { Input } from "../ui/Input"
+import { mockAchievements } from '../Achievements/Achievements';
 import { Label } from '../ui/label';
+import { Achievement } from '../Achievements/types';
 
 import { fetchHabitsApi, updateHabitApi, fetchWeeklyHabitsApi, fetchAnalyticsApi } from "../../api"
 import { Habit as HabitType, WeeklyData } from "../../types"
@@ -122,10 +124,7 @@ export default function HabitTracker() {
     }
   }
 
-  const achievements = [
-    { icon: Trophy, label: "30 Day Streak", description: "Complete all habits for 30 days" },
-    { icon: Flame, label: "Perfect Week", description: "100% completion for 7 days" },
-  ]
+  const achievements = mockAchievements;
 
   const filteredHabits = uiHabits.filter(
     (habit) => filter === "all" || habit.category.toLowerCase() === filter.toLowerCase(),
@@ -298,26 +297,27 @@ export default function HabitTracker() {
               <CardTitle className={theme === "dark" ? "text-white" : "text-slate-900"}>Achievements</CardTitle>
             </CardHeader>
             <CardContent className="grid gap-4">
-              {achievements.map((achievement) => (
-                <div
-                  key={achievement.label}
-                  className={`flex items-center gap-4 rounded-lg border ${
-                    theme === "dark" ? "border-slate-700" : "border-slate-200"
-                  } p-4`}
-                >
-                  <div className={`rounded-full p-2 ${theme === "dark" ? "bg-slate-700" : "bg-slate-100"}`}>
-                    <achievement.icon
-                      className={`h-5 w-5 ${theme === "dark" ? "text-yellow-500" : "text-yellow-600"}`}
-                    />
+              {mockAchievements.map((achievement: Achievement) => {
+                const IconComponent = achievement.icon; // Get the icon component
+                return (
+                  <div
+                    key={achievement.title}
+                    className={`flex items-center gap-4 rounded-lg border ${
+                      theme === "dark" ? "border-slate-700" : "border-slate-200"
+                    } p-4`}
+                  >
+                    <div className={`rounded-full p-2 ${theme === "dark" ? "bg-slate-700" : "bg-slate-100"}`}>
+                      <IconComponent className={`h-5 w-5 ${theme === "dark" ? "text-yellow-500" : "text-yellow-600"}`} />
+                    </div>
+                    <div>
+                      <h3 className={`font-medium ${theme === "dark" ? "text-white" : "text-slate-900"}`}>
+                        {achievement.title}
+                      </h3>
+                      <p className={theme === "dark" ? "text-slate-400" : "text-slate-500"}>{achievement.description}</p>
+                    </div>
                   </div>
-                  <div>
-                    <h3 className={`font-medium ${theme === "dark" ? "text-white" : "text-slate-900"}`}>
-                      {achievement.label}
-                    </h3>
-                    <p className={theme === "dark" ? "text-slate-400" : "text-slate-500"}>{achievement.description}</p>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </CardContent>
           </Card>
         </div>
