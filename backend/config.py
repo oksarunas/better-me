@@ -63,7 +63,10 @@ class Config:
 
     # Database settings with validation
     try:
-        DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///progress.db")
+        # Updated the DATABASE_URL to point to the correct location of the database
+        # The default value is set to use a SQLite database located at backend/progress.db
+        # This can be overridden by setting the DATABASE_URL environment variable
+        DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///backend/progress.db")
         make_url(DATABASE_URL)  # Validate DB URL format
     except Exception as e:
         logger.error(f"Invalid DATABASE_URL: {e}")

@@ -12,16 +12,19 @@ class HabitCategory(str, Enum):
     NUTRITION = "Nutrition"
 
 
+# Updated the HabitCategory schema to reflect the new habit names and ensure consistency in the database.
+# This change ensures that the HabitCategory enum is aligned with the new habit names, 
+# which is crucial for maintaining data integrity and consistency in the database.
 class HabitEnum(str, Enum):
     """Enumeration for allowed habits with their categories."""
     SEVEN_HOURS_SLEEP = "7 hours of sleep"
-    BREAKFAST = "Breakfast"
-    WORKOUT = "Workout"
-    CODE = "Code"
-    CREATINE = "Creatine"
-    READ = "Read"
-    VITAMINS = "Vitamins"
-    NO_DRINK = "No drink"
+    BREAKFAST = "Healthy Breakfast"
+    WORKOUT = "Workout for 30 minutes"
+    CODE = "Work on personal project for an hour"
+    CREATINE = "5 g of creatine"
+    READ = "Read for 20 minutes"
+    VITAMINS = "Multivitamins"
+    NO_DRINK = "No alcohol"
 
     @classmethod
     def list_values(cls) -> List[str]:
