@@ -1,3 +1,4 @@
+import axios from 'axios';
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Button } from "../ui/Button";
@@ -5,7 +6,16 @@ import { Card } from "../ui/Card";
 import { Input } from "../ui/Input";
 import { useAuth } from '../../contexts/AuthContext';
 import { ArrowLeft } from 'lucide-react';
-import axios from 'axios';
+
+interface ErrorResponse {
+    detail?: string;
+    // Add other properties if needed
+}
+
+interface LoginResponse {
+    access_token: string;
+    user: any;
+}
 
 const Login: React.FC = () => {
   const navigate = useNavigate();
@@ -29,35 +39,27 @@ const Login: React.FC = () => {
     console.log('Sending request to:', endpoint);
     
     try {
-      // Explicitly prevent default again to ensure it works across browsers
-      e.preventDefault();
+      const response = await axios.post(endpoint, payload);
+      console.log('Response status:', response.status);
       
-      try {
-        const response = await axios.post(endpoint, payload);
-        console.log('Response status:', response.status);
-        
-        if (response.status >= 400) {
-          const errorData = response.data;
-          console.error('Login error:', errorData);
-          throw new Error(errorData.detail || 'Authentication failed');
-        }
-
-        const data = response.data;
-        console.log('Login successful, navigating to tracker');
-        login(data.access_token, data.user);
-        navigate('/tracker');
-      } catch (error) {
-        if (axios.isAxiosError(error) && error.response) {
-          console.error('Login error:', error.response.data);
-          throw new Error(error.response.data.detail || 'Authentication failed');
-        } else {
-          console.error('Network error:', error);
-          throw new Error('Network error occurred');
-        }
-      }
+      const data = response.data as LoginResponse;
+      console.log('Login successful, navigating to tracker');
+      login(data.access_token, data.user);
+      navigate('/tracker');
     } catch (err) {
-      console.error('Login error:', err);
-      setError(err instanceof Error ? err.message : 'Authentication failed');
+      if (axios.isAxiosError(err) && err.response) {
+        const errorData = err.response.data as ErrorResponse;
+        console.error('Login error:', errorData);
+        setError(errorData.detail || 'Authentication failed');
+      } else if (err instanceof Error) {
+        // Handle general error
+        console.error('Login error:', err);
+        setError(err.message);
+      } else {
+        // Handle other unexpected error types
+        console.error('Unexpected error:', err);
+        setError('An unexpected error occurred');
+      }
     }
   };
 
@@ -68,6 +70,7 @@ const Login: React.FC = () => {
           <button
             onClick={() => navigate('/')}
             className="text-gray-400 hover:text-white transition-colors"
+            type="button"
           >
             <ArrowLeft className="h-5 w-5" />
           </button>
@@ -132,14 +135,7 @@ const Login: React.FC = () => {
           
           <Button 
             type="submit" 
-            className="w-full" 
-            onClick={(e) => {
-              console.log('Button clicked directly');
-              // Only handle click if form submission fails
-              if (!e.defaultPrevented) {
-                handleSubmit(e as unknown as React.FormEvent<HTMLFormElement>);
-              }
-            }}
+            className="w-full"
           >
             {isRegistering ? 'Create Account' : 'Sign In'}
           </Button>
@@ -149,6 +145,7 @@ const Login: React.FC = () => {
           <button
             onClick={() => setIsRegistering(!isRegistering)}
             className="text-sm text-gray-400 hover:text-white transition-colors"
+            type="button"
           >
             {isRegistering 
               ? 'Already have an account? Sign in'

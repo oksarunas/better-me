@@ -1,9 +1,8 @@
 import axios from 'axios';
-import type { InternalAxiosRequestConfig } from 'axios';
 
 // Create an axios instance with custom config
 export const axiosInstance = axios.create({
-  baseURL: process.env.REACT_APP_API_BASE_URL || 'http://localhost:8001/api',
+  baseURL: process.env.REACT_APP_API_BASE_URL || 'http://localhost:8000/api',
   timeout: 10000,
   headers: {
     'Content-Type': 'application/json',
@@ -12,14 +11,16 @@ export const axiosInstance = axios.create({
 
 // Add a request interceptor to add the auth token
 axiosInstance.interceptors.request.use(
-  (config: InternalAxiosRequestConfig) => {
+  (config) => {
     const token = localStorage.getItem('authToken');
     if (token && config.headers) {
       config.headers.Authorization = `Bearer ${token}`;
     }
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => {
+    return Promise.reject(error);
+  }
 );
 
 // Add response interceptor for better error handling

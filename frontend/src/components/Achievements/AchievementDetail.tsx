@@ -54,10 +54,13 @@ export const AchievementDetail: React.FC<AchievementDetailProps> = ({
           <div className="space-y-4">
             <div>
               <h3 className="font-semibold mb-2">Progress</h3>
-              <Progress
-                value={(achievement.progress / achievement.maxProgress) * 100}
-                className="h-3"
-              />
+              <div className="h-3">
+                <div className="h-3">
+                  <Progress
+                    value={(achievement.progress / achievement.maxProgress) * 100}
+                  />
+                </div>
+              </div>
               <p className="text-sm text-gray-600 mt-1">
                 {achievement.progress} / {achievement.maxProgress}
               </p>

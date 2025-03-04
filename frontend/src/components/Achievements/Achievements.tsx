@@ -281,10 +281,11 @@ export const Achievements: React.FC = () => {
                 </div>
                 <p className="text-gray-600 mt-2">{achievement.description}</p>
                 <div className="mt-4">
-                  <Progress
-                    value={(achievement.progress / achievement.maxProgress) * 100}
-                    className="h-2"
-                  />
+                  <div className="h-2">
+                    <Progress
+                      value={(achievement.progress / achievement.maxProgress) * 100}
+                    />
+                  </div>
                   <div className="flex justify-between items-center mt-1">
                     <p className="text-sm text-gray-500">
                       {achievement.progress} / {achievement.maxProgress}

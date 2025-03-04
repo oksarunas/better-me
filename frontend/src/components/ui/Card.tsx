@@ -28,7 +28,10 @@ const cardVariants = cva(
   }
 );
 
-interface CardProps extends React.HTMLAttributes<HTMLDivElement>, VariantProps<typeof cardVariants> {
+interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
+  variant?: "default" | "solid" | "glass" | "outline" | "elevated";
+  hover?: boolean;
+  clickable?: boolean;
   loading?: boolean;
 }
 

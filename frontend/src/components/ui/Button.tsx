@@ -3,7 +3,8 @@ import { Slot } from "@radix-ui/react-slot";
 import { cva, type VariantProps } from "class-variance-authority";
 import { cn } from "../../lib/utils";
 
-const buttonVariants = cva(
+/** Defines the button variant styles using cva */
+export const buttonVariantStyles = cva(
   "inline-flex items-center justify-center rounded-lg text-sm font-medium transition-all duration-200 ease-in-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed active:scale-[0.98]",
   {
     variants: {
@@ -25,7 +26,7 @@ const buttonVariants = cva(
         icon: "h-10 w-10 rounded-lg",
       },
       loading: {
-        true: "relative !text-transparent transition-none hover:!text-transparent",
+        true: "relative transition-none [&[disabled]]:opacity-100",
       },
       fullWidth: {
         true: "w-full",
@@ -40,25 +41,45 @@ const buttonVariants = cva(
   }
 );
 
-export interface ButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof buttonVariants> {
-  asChild?: boolean;
+/** Button Props Interface */
+export interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
+  variant?: "primary" | "secondary" | "outline" | "ghost" | "destructive" | "success" | "link";
+  size?: "xs" | "sm" | "md" | "lg" | "xl" | "icon";
   loading?: boolean;
   fullWidth?: boolean;
+  asChild?: boolean;
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
 }
 
+/** Button Component */
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  ({ className, variant, size, loading, fullWidth, asChild = false, leftIcon, rightIcon, children, ...props }, ref) => {
+  (
+    {
+      className,
+      variant,
+      size,
+      loading,
+      fullWidth,
+      asChild = false,
+      leftIcon,
+      rightIcon,
+      children,
+      ...props
+    },
+    ref
+  ) => {
     const Comp = asChild ? Slot : "button";
-    
+
     return (
       <Comp
-        className={cn(buttonVariants({ variant, size, loading, fullWidth, className }))}
+        className={cn(
+          buttonVariantStyles({ variant, size, loading, fullWidth, className })
+        )}
         ref={ref}
         {...props}
+        disabled={loading || props.disabled}
+        aria-busy={loading || undefined}
       >
         {loading && (
           <div className="absolute inset-0 flex items-center justify-center">
@@ -84,7 +105,7 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
             </svg>
           </div>
         )}
-        <span className="flex items-center gap-2">
+        <span className={cn("flex items-center gap-2", loading && "invisible")}>
           {leftIcon && <span className="inline-flex">{leftIcon}</span>}
           {children}
           {rightIcon && <span className="inline-flex">{rightIcon}</span>}
@@ -96,4 +117,4 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
 
 Button.displayName = "Button";
 
-export { Button, buttonVariants };
+export { Button };

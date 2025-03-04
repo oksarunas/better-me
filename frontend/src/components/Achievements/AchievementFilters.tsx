@@ -36,7 +36,7 @@ export const AchievementFilterControls: React.FC<AchievementFilterControlsProps>
     <div className="flex flex-wrap gap-4 mb-6">
       <Select
         value={filters.category}
-        onValueChange={(value) => onFilterChange({ ...filters, category: value as AchievementCategory | 'all' })}
+        onValueChange={(value: string) => onFilterChange({ ...filters, category: value as AchievementCategory | 'all' })}
       >
         <SelectTrigger className="w-48">
           <SelectValue placeholder="Select Category" />
@@ -52,7 +52,7 @@ export const AchievementFilterControls: React.FC<AchievementFilterControlsProps>
 
       <Select
         value={filters.status}
-        onValueChange={(value) => onFilterChange({ ...filters, status: value as 'all' | 'locked' | 'unlocked' })}
+        onValueChange={(value: string) => onFilterChange({ ...filters, status: value as 'all' | 'locked' | 'unlocked' })}
       >
         <SelectTrigger className="w-48">
           <SelectValue placeholder="Select Status" />
@@ -68,7 +68,7 @@ export const AchievementFilterControls: React.FC<AchievementFilterControlsProps>
 
       <Select
         value={filters.sortBy}
-        onValueChange={(value) => onFilterChange({ ...filters, sortBy: value as 'progress' | 'recent' | 'alphabetical' })}
+        onValueChange={(value: string) => onFilterChange({ ...filters, sortBy: value as 'progress' | 'recent' | 'alphabetical' })}
       >
         <SelectTrigger className="w-48">
           <SelectValue placeholder="Sort By" />

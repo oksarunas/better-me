@@ -4,7 +4,7 @@ import { Checkbox } from "../../components/ui/Checkbox";
 import { Badge } from "../../components/ui/Badge";
 import { Flame } from "lucide-react";
 import { Habit } from "../../types";
-import { Progress } from "../../components/ui/Progress";
+import { Progress } from '../ui/Progress';
 
 interface HabitListProps {
   groupedHabits: Record<string, Habit[]>;
@@ -51,10 +51,9 @@ export default function HabitList({ groupedHabits, toggleHabit }: HabitListProps
                       )}
                     </div>
                     <Progress
-                      className="mt-2"
+                      className={`mt-2`}
                       value={habit.streak}
                       max={30}
-                      size="sm"
                       variant="glass"
                       indicatorVariant="rainbow"
                       animated={true}

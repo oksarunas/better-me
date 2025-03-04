@@ -40,9 +40,13 @@ const badgeVariants = cva(
   }
 );
 
-export interface BadgeProps
-  extends React.HTMLAttributes<HTMLSpanElement>,
-    VariantProps<typeof badgeVariants> {
+export interface BadgeProps extends React.HTMLAttributes<HTMLSpanElement> {
+  className?: string;
+  variant?: "primary" | "secondary" | "success" | "warning" | "error" | "info" | "outline";
+  size?: "sm" | "md" | "lg";
+  glow?: boolean;
+  dot?: boolean;
+  interactive?: boolean;
   leftIcon?: React.ReactNode;
   rightIcon?: React.ReactNode;
 }
@@ -72,7 +76,7 @@ export function Badge({
   };
 
   const glowStyle = glow && variant
-    ? { "--glow-color": glowColors[variant as keyof typeof glowColors], ...style }
+    ? { "--glow-color": glowColors[variant as keyof typeof glowColors], ...style } as React.CSSProperties
     : style;
 
   return (

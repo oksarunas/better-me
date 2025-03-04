@@ -1,16 +1,20 @@
 {
   "compilerOptions": {
-    "target": "es2016",
-    "module": "ESNext", // Change to ESNext for modern module support
-    "jsx": "react-jsx", // Enables JSX support
-    "esModuleInterop": true,
-    "forceConsistentCasingInFileNames": true,
-    "strict": true,
+    "target": "es5",
+    "lib": ["dom", "dom.iterable", "esnext"],
+    "allowJs": true,
     "skipLibCheck": true,
-    "baseUrl": "src", // Set baseUrl to src
-    "paths": {
-      "@/*": ["*"] // Simplified path resolution
-    },
-    "moduleResolution": "Node" // Optional: use Node resolution strategy
-  }
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    "noFallthroughCasesInSwitch": true,
+    "module": "esnext",
+    "moduleResolution": "node",
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx"
+  },
+  "include": ["src"]
 }

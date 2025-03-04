@@ -26,7 +26,7 @@ dist/
 build/
 *.log
 
-# If you're using Yarn PnP, you might ignore .pnp & .pnp.js if you don’t commit those
+# If you're using Yarn PnP, you might ignore .pnp & .pnp.js if you don't commit those
 .pnp*
 .pnp.js
 
@@ -36,3 +36,6 @@ Thumbs.db
 .vscode/
 .idea/
 *.db
+
+# Added from the code block
+backend/data/*.db

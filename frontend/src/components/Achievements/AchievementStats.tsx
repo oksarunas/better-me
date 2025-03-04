@@ -29,10 +29,11 @@ export const AchievementStatsDisplay: React.FC<AchievementStatsDisplayProps> = (
           <div className="text-3xl font-bold mb-2">
             {Math.round((stats.unlockedAchievements / stats.totalAchievements) * 100)}%
           </div>
-          <Progress
-            value={(stats.unlockedAchievements / stats.totalAchievements) * 100}
-            className="h-2"
-          />
+          <div className="h-2">
+            <Progress
+              value={(stats.unlockedAchievements / stats.totalAchievements) * 100}
+            />
+          </div>
           <p className="text-sm text-gray-600 mt-2">
             {stats.unlockedAchievements} / {stats.totalAchievements} Achievements
           </p>

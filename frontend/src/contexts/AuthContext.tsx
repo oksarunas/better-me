@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, ReactNode, useEffect } from 'react';
+import React, { createContext, useContext, useState, ReactNode } from 'react';
 
 // Define the shape of the user object
 interface User {
@@ -23,36 +23,10 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 // AuthProvider component to wrap the app and provide authentication state
 export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  // State for storing authentication token and user
-  const [token, setToken] = useState<string | null>(() => {
-    const storedToken = localStorage.getItem('authToken');
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [token, setToken] = useState<string | null>(null);
 
-    // Only return the token if it's a non-empty string
-    return storedToken && storedToken !== "undefined" ? storedToken : null;
-  });
-  
-  const [user, setUser] = useState<User | null>(() => {
-    const storedUser = localStorage.getItem('user');
-
-    try {
-      return storedUser ? JSON.parse(storedUser) : null;
-    } catch (e) {
-
-      return null;
-    }
-  });
-
-  // Ensure token and user state are consistent
-  useEffect(() => {
-    if (!token || token === "undefined") {
-      // If there's no valid token, ensure user is also cleared
-      setUser(null);
-      localStorage.removeItem('user');
-      localStorage.removeItem('authToken');
-    }
-  }, [token]);
-
-  // Login function to set token and user
   const login = (newToken: string, userData: User) => {
     console.log('Attempting to login with token:', { hasToken: !!newToken, userData });
     
@@ -74,6 +48,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       // Update state
       setToken(newToken);
       setUser(userData);
+      setIsAuthenticated(true);
       
       console.log('Login successful, state updated');
     } catch (error) {
@@ -83,13 +58,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
       localStorage.removeItem('user');
       setToken(null);
       setUser(null);
+      setIsAuthenticated(false);
     }
   };
 
-  // Logout function to clear token and user
   const logout = () => {
-
-    
     // Remove token and user from localStorage
     localStorage.removeItem('authToken');
     localStorage.removeItem('user');
@@ -97,23 +70,11 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // Clear state
     setToken(null);
     setUser(null);
-    
-
+    setIsAuthenticated(false);
   };
-
-  // Create the context value
-  const value = {
-    isAuthenticated: !!(token && token !== "undefined" && user),
-    user,
-    token,
-    login,
-    logout
-  };
-
-
 
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider value={{ isAuthenticated, user, token, login, logout }}>
       {children}
     </AuthContext.Provider>
   );

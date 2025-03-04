@@ -10,7 +10,7 @@ from sqlalchemy.exc import SQLAlchemyError
 # Import configuration
 from config import Config
 
-# ✅ MOVE THIS TO THE TOP to avoid SyntaxError
+
 from models import *  # Ensure models are registered at module level
 
 # Configure logging
