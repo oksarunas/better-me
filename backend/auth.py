@@ -119,11 +119,38 @@ async def login(request: LoginRequest, db: AsyncSession = Depends(get_db)):
 
 @router.post("/auth/google")
 async def google_login(request: GoogleLoginRequest, db: AsyncSession = Depends(get_db)):
-    """Handles Google OAuth2 login and returns JWT token."""
+    """Handles Google OAuth2 login and demo login, returning a JWT token."""
     logger.info("Received Google login request")
+    id_token_str = request.id_token
+
+    # Demo login condition
+    if id_token_str == "demo_token":
+        logger.info("Processing demo login")
+        # Use get_or_create_user to create or retrieve the demo user
+        demo_user = await get_or_create_user(
+            db,
+            google_sub="demo_999",  # Unique demo identifier
+            email="demo@betterme.website",
+            name="Demo User",
+            avatar_url="https://example.com/demo-avatar.png"
+        )
+        access_token = create_access_token(data={"sub": str(demo_user.id)})
+        logger.info(f"Demo login successful: user_id={demo_user.id}")
+        return {
+            "access_token": access_token,
+            "token_type": "bearer",
+            "user": {
+                "id": demo_user.id,
+                "email": demo_user.email,
+                "name": demo_user.name,
+                "avatar_url": demo_user.avatar_url,
+            }
+        }
+
+    # Real Google token validation
     try:
         decoded_token = id_token.verify_oauth2_token(
-            request.id_token,
+            id_token_str,
             requests.Request(),
             GOOGLE_CLIENT_ID
         )

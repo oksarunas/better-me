@@ -1,7 +1,6 @@
-# fix.py
 import asyncio
 import logging
-from datetime import date, timedelta, datetime  
+from datetime import date, timedelta, datetime  # Added datetime
 from database import async_session_maker, init_db
 from logic import recalc_all_streaks, bulk_update_progress
 from schemas import BulkUpdate, ProgressUpdate
@@ -10,7 +9,6 @@ from typing import List
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
-
 
 async def fetch_all_habits(db) -> List[str]:
     """Fetch all unique habits from the database."""
@@ -23,41 +21,23 @@ async def fetch_all_habits(db) -> List[str]:
         logger.error(f"Error fetching habits: {e}")
         raise
 
-
-from datetime import datetime, date, timedelta
-from database import async_session_maker, init_db
-from logic import recalc_all_streaks, bulk_update_progress
-from schemas import BulkUpdate, ProgressUpdate
-import logging
-
-logger = logging.getLogger(__name__)
-
 async def fill_missing_data(db, allowed_habits, user_id: int):
     """Ensure all habits are present for every date from the earliest DB date up to today."""
     try:
-        # 1. Find the earliest date in the DB
+        # Get earliest date from DB
         result = await db.execute("SELECT MIN(date) FROM progress")
-        earliest_db_date = result.fetchone()[0]
-        
-        if earliest_db_date is None:
-            # If there's no data in the DB at all, start from today
-            earliest_db_date = date.today()
+        earliest_date_str = result.scalar_one()
+        if earliest_date_str:
+            earliest_date = datetime.strptime(earliest_date_str, "%Y-%m-%d").date()
         else:
-            # If earliest_db_date is a string, parse it
-            if isinstance(earliest_db_date, str):
-                # Adjust the format below if your DB string format is different
-                earliest_db_date = datetime.strptime(earliest_db_date, "%Y-%m-%d").date()
+            earliest_date = date.today()
+        current_date = earliest_date
+        today = date.today()
 
-        # 2. Determine today's date
-        end_date = date.today()
-
-        # 3. Iterate day by day from earliest_db_date to today
-        current_date = earliest_db_date
-        while current_date <= end_date:
-            # Fetch existing habits for the current date
+        while current_date <= today:
             existing_result = await db.execute(
                 "SELECT habit FROM progress WHERE date = :date",
-                {"date": current_date.isoformat()}  # pass as string if your DB column is text
+                {"date": current_date.isoformat()}
             )
             existing_habits = {row[0] for row in existing_result.fetchall()}
 
@@ -88,8 +68,6 @@ async def fill_missing_data(db, allowed_habits, user_id: int):
         logger.error(f"Error while filling missing data: {e}")
         raise
 
-
-
 async def main():
     try:
         # Initialize the database
@@ -103,7 +81,6 @@ async def main():
 
             # Fill missing data
             logger.info("Filling missing data...")
-            # Get the user ID from the database - we'll use the first user as default
             result = await db.execute("SELECT id FROM users LIMIT 1")
             user_id = result.scalar_one()
             if not user_id:
@@ -118,7 +95,6 @@ async def main():
         logger.info("Streak recalculation completed successfully.")
     except Exception as e:
         logger.error(f"An error occurred: {e}")
-
 
 if __name__ == "__main__":
     asyncio.run(main())

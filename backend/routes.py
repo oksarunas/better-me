@@ -37,7 +37,9 @@ router = APIRouter()
 async def weekly_progress(db: AsyncSession = Depends(get_db), current_user = Depends(get_current_user)):
     """Get progress for the last 7 days."""
     try:
-        return await get_weekly_progress(db, ALLOWED_HABITS, current_user.id)
+        return await get_weekly_progress(db, current_user.id)
+    except HTTPException as he:
+        raise he
     except Exception as e:
         logger.error(f"Error in weekly_progress: {e}")
         raise HTTPException(status_code=500, detail="Failed to fetch weekly progress")

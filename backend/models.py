@@ -25,7 +25,7 @@ class User(Base):
     name = Column(String, nullable=True)
     avatar_url = Column(String, nullable=True)
 
-    # ✅ Ensure cascading deletes
+    # Ensure cascading deletes
     progress = relationship("Progress", back_populates="user", cascade="all, delete-orphan")
 
     def __repr__(self) -> str:
@@ -46,7 +46,7 @@ class Progress(Base):
     streak = Column(Integer, nullable=False, default=0)
 
     # Add a foreign key linking to the users table
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
 
     # Relationship to the User model
     user = relationship("User", back_populates="progress")
@@ -64,15 +64,37 @@ async def fetch_progress_by_date_and_habit(
 ) -> Optional[Progress]:
     """
     Fetch a progress record for a specific date and habit efficiently.
+    
+    Args:
+        db (AsyncSession): The database session.
+        date_obj (date): The date to query.
+        habit (str): The habit name to query.
+        user_id (int): The ID of the user.
+        
+    Returns:
+        Optional[Progress]: The progress record if found, None otherwise.
+        
+    Raises:
+        SQLAlchemyError: If there is a database error.
     """
     try:
-        query = select(exists().where(Progress.date == date_obj, Progress.habit == habit, Progress.user_id == user_id))
-        exists_result = await db.execute(query)
+        # First check if the record exists
+        exists_query = select(exists().where(
+            Progress.date == date_obj, 
+            Progress.habit == habit, 
+            Progress.user_id == user_id
+        ))
+        exists_result = await db.execute(exists_query)
         
         if not exists_result.scalar():
             return None
 
-        query = select(Progress).where(Progress.date == date_obj, Progress.habit == habit, Progress.user_id == user_id)
+        # Then fetch the record
+        query = select(Progress).where(
+            Progress.date == date_obj, 
+            Progress.habit == habit, 
+            Progress.user_id == user_id
+        )
         result = await db.execute(query)
         return result.scalar_one_or_none()
     except SQLAlchemyError as e:
@@ -88,17 +110,43 @@ async def update_progress_status(
     updates: Mapping[str, Any]
 ) -> None:
     """
-    Efficiently update progress records in bulk.
+    Efficiently update progress records.
+    
+    Args:
+        db (AsyncSession): The database session.
+        date_obj (date): The date of the progress record.
+        habit (str): The habit name.
+        user_id (int): The ID of the user.
+        updates (Mapping[str, Any]): A mapping of column names to new values.
+        
+    Raises:
+        SQLAlchemyError: If there is a database error.
     """
     try:
-        query = select(Progress).where(Progress.date == date_obj, Progress.habit == habit, Progress.user_id == user_id)
+        # Check if the record exists
+        query = select(Progress).where(
+            Progress.date == date_obj, 
+            Progress.habit == habit, 
+            Progress.user_id == user_id
+        )
         result = await db.execute(query)
         existing_record = result.scalar_one_or_none()
 
         if existing_record:
-            await db.execute(update(Progress).where(Progress.id == existing_record.id).values(**updates))
+            # Update existing record
+            await db.execute(
+                update(Progress)
+                .where(Progress.id == existing_record.id)
+                .values(**updates)
+            )
         else:
-            new_record = Progress(date=date_obj, habit=habit, user_id=user_id, **updates)
+            # Create new record
+            new_record = Progress(
+                date=date_obj, 
+                habit=habit, 
+                user_id=user_id, 
+                **updates
+            )
             db.add(new_record)
 
         await db.commit()
@@ -106,6 +154,7 @@ async def update_progress_status(
         await db.rollback()
         logger.error(f"Database error updating progress for {date_obj}, {habit}: {e}")
         raise
+
 
 async def fetch_all_progress_by_date(
     db: AsyncSession,
@@ -115,9 +164,23 @@ async def fetch_all_progress_by_date(
 ) -> List[Progress]:
     """
     Fetch all progress records for a given date or a range of dates.
+    
+    Args:
+        db (AsyncSession): The database session.
+        start_date (date): The start date of the range.
+        user_id (int): The ID of the user.
+        end_date (Optional[date]): The end date of the range, inclusive.
+            If None, only records for start_date are fetched.
+        
+    Returns:
+        List[Progress]: A list of progress records.
+        
+    Raises:
+        SQLAlchemyError: If there is a database error.
     """
     try:
         query = select(Progress).where(Progress.user_id == user_id)
+        
         if end_date:
             query = query.where(Progress.date.between(start_date, end_date))
         else:
@@ -129,15 +192,63 @@ async def fetch_all_progress_by_date(
         logger.error(f"Database error fetching progress: {e}")
         raise
 
-async def fetch_all_habits(db: AsyncSession) -> List[str]:
+
+async def fetch_progress_date_range(
+    db: AsyncSession,
+    start_date: date,
+    end_date: date,
+    user_id: int
+) -> List[Progress]:
+    """
+    Fetch all progress records for a given date range.
+    
+    Args:
+        db (AsyncSession): The database session.
+        start_date (date): The start date of the range.
+        end_date (date): The end date of the range, inclusive.
+        user_id (int): The ID of the user.
+        
+    Returns:
+        List[Progress]: A list of progress records.
+        
+    Raises:
+        SQLAlchemyError: If there is a database error.
+        ValueError: If invalid parameter types are provided.
+    """
+    try:
+        # Validate input types
+        if not isinstance(user_id, int):
+            raise ValueError(f"user_id must be an integer, got {type(user_id)}")
+        if not isinstance(start_date, date):
+            raise ValueError(f"start_date must be a date object, got {type(start_date)}")
+        if not isinstance(end_date, date):
+            raise ValueError(f"end_date must be a date object, got {type(end_date)}")
+
+        query = select(Progress).where(
+            Progress.date.between(start_date, end_date),
+            Progress.user_id == user_id
+        ).order_by(Progress.date)
+        
+        result = await db.execute(query)
+        return result.scalars().all()
+    except (SQLAlchemyError, ValueError) as e:
+        logger.error(f"Database error fetching progress for date range {start_date} to {end_date}: {e}")
+        raise
+
+
+async def fetch_all_habits(db: AsyncSession, user_id: int) -> List[str]:
     """
     Fetch all distinct habits from the database.
     
     Args:
         db (AsyncSession): The database session.
+        user_id (int): The ID of the user whose habits to fetch.
     
     Returns:
         List[str]: A list of distinct habit names.
+        
+    Raises:
+        SQLAlchemyError: If there is a database error.
     """
     try:
         query = select(Progress.habit).where(Progress.user_id == user_id).distinct().order_by(Progress.habit)

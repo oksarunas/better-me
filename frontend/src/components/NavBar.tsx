@@ -1,10 +1,19 @@
 "use client";
 import React from "react";
-import { Link } from "react-router-dom";
-import { useAuth } from "../contexts/AuthContext";  // Import useAuth hook
+import { Link, useNavigate } from "react-router-dom";
+import { useAuth } from "../contexts/AuthContext";
 
 const NavBar: React.FC = () => {
-  const { isAuthenticated, logout } = useAuth();  // Use the useAuth hook
+  const { isAuthenticated, logout } = useAuth();
+  const navigate = useNavigate();
+const handleSignOut = async () => {
+  try {
+    await logout();
+    navigate('/login');
+  } catch (error) {
+    console.error('Sign out error:', error);
+  }
+};
 
   return (
     <nav className="bg-gray-800 p-4">
@@ -38,7 +47,7 @@ const NavBar: React.FC = () => {
         <div>
           {isAuthenticated && (
             <button 
-              onClick={logout}
+              onClick={handleSignOut}
               className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
             >
               Sign Out

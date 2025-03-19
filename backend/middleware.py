@@ -1,45 +1,41 @@
-import logging
-import time
-from fastapi import Request, Response
+from fastapi import Request
 from starlette.middleware.base import BaseHTTPMiddleware
-from typing import Callable, Awaitable
-from application_status import ApplicationStatus
+import logging
+
+class ApplicationStatus:
+    @staticmethod
+    def increment_request():
+        # Implement the logic to increment request count
+        pass
+
+    @staticmethod
+    def increment_error():
+        # Implement the logic to increment error count
+        pass
+import logging
+from fastapi.responses import JSONResponse
+from starlette.middleware.base import BaseHTTPMiddleware, RequestResponseEndpoint as NextCallable
 
 logger = logging.getLogger(__name__)
 
-# Define a type for the call_next function
-NextCallable = Callable[[Request], Awaitable[Response]]
-
 class MetricsMiddleware(BaseHTTPMiddleware):
-    """
-    Middleware to log requests and track application metrics.
-
-    Logs request method, URL, response status code, duration, and errors.
-    Also increments application-level request and error metrics.
-    """
-    async def dispatch(self, request: Request, call_next: NextCallable) -> Response:
-        start_time = time.perf_counter()
-        ApplicationStatus.increment_request()
-
+    async def dispatch(self, request: Request, call_next):
         try:
-            # Process the request
-            response: Response = await call_next(request)
-            duration = time.perf_counter() - start_time
-
-            # Log request details
-            logger.info(
+            response = await call_next(request)
+            
+            # Log the request details
+            logging.info(
                 f"[Request] {request.method} {request.url.path} "
-                f"Status: {response.status_code} Duration: {duration:.3f}s"
+                f"Status: {response.status_code} "
+                f"Content-Type: {response.headers.get('content-type', 'unknown')}"
             )
+            
+            # Ensure content length matches
+            if "content-length" in response.headers:
+                del response.headers["content-length"]
+            
             return response
-
+            
         except Exception as e:
-            duration = time.perf_counter() - start_time  # Log duration even in error case
-            ApplicationStatus.increment_error()
-
-            # Log the error with additional context
-            logger.error(
-                f"[Error] {request.method} {request.url.path} "
-                f"Error: {str(e)} Duration: {duration:.3f}s"
-            )
+            logging.error(f"Unexpected error: {str(e)} | Request: {request.method} {request.url} | Correlation ID: {request.state.correlation_id}")
             raise

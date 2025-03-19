@@ -45,7 +45,7 @@ class Config:
 
     # CORS settings (Prevents `*` in production)
     ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "").split(",")
-    ALLOWED_ORIGINS = [origin.strip() for origin in ALLOWED_ORIGINS if origin.strip()]
+    #ALLOWED_ORIGINS = [origin.strip() for origin in ALLOWED_ORIGINS if origin.strip()]
     
     logger.info(f"CORS Allowed Origins: {ALLOWED_ORIGINS}")
     
@@ -55,7 +55,8 @@ class Config:
             "http://127.0.0.1:3000",
             "http://localhost:3001",
             "http://127.0.0.1:3001",
-            "http://localhost:8001"
+            "http://localhost:8001",
+            "http://localhost:8000",
         ]
     
     if "*" in ALLOWED_ORIGINS and not DEBUG:

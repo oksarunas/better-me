@@ -11,7 +11,7 @@ from sqlalchemy.exc import SQLAlchemyError
 from config import Config
 
 
-from models import *  # Ensure models are registered at module level
+from models import * 
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)

@@ -2,12 +2,13 @@ import os
 import logging
 import asyncio
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.exceptions import RequestValidationError
+from fastapi.responses import JSONResponse
+import datetime
 
 from database import init_db
-from routes import router as api_router
 from config import Config
 from middleware import MetricsMiddleware
 from application_status import ApplicationStatus
@@ -38,7 +39,7 @@ app.add_exception_handler(Exception, general_exception_handler)
 app.add_middleware(MetricsMiddleware)
 
 # Configure CORS
-logging.info(f"Configuring CORS with origins: {Config.ALLOWED_ORIGINS}")
+logging.info("Configuring CORS with origins: %s", Config.ALLOWED_ORIGINS)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=Config.ALLOWED_ORIGINS,
@@ -58,16 +59,16 @@ async def root():
 # Lifecycle events
 @app.on_event("startup")
 async def on_startup():
-    logging.info("Starting application...")
+    logging.info("Application startup initiated...")
     try:
-        asyncio.create_task(init_db())
+        await init_db()
         logging.info("Database initialization started.")
     except Exception as e:
         logging.error(f"Database initialization failed: {e}")
 
 @app.on_event("shutdown")
 async def on_shutdown():
-    logging.info("Shutting down application...")
+    logging.info("Application shutdown initiated...")
     logging.info("Application shutdown complete.")
 
 # Include all API routers
@@ -77,4 +78,5 @@ app.include_router(auth_router, prefix="/api")
 
 if __name__ == "__main__":
     logging.info("Starting server...")
-    uvicorn.run("main:app", host="0.0.0.0", port=int(os.getenv("PORT", 8001)), reload=True)
+    reload = os.getenv("ENV", "development") == "development"
+    uvicorn.run("main:app", host="0.0.0.0", port=int(os.getenv("PORT", 8001)), reload=reload)

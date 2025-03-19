@@ -20,6 +20,22 @@ const LandingPage: React.FC = () => {
     }
   }, [isAuthenticated, navigate]);
 
+  const handleDemoLogin = async () => {
+    try {
+      const result = await googleSignInApi('demo_token');
+      console.log('Demo Login Success:', result);
+  
+      // Assuming result contains access_token and user
+      const user = {
+        ...result.user,
+        id: result.user.id.toString() // Convert id to string if needed
+      };
+      login(result.access_token, user); // Update auth context
+    } catch (error) {
+      console.error('Demo Login Error:', error);
+    }
+  };
+
   // Callback for handling the Google credential response
   const handleCredentialResponse = useCallback(async (response: any) => {
     console.log('Google sign-in response received:', { hasCredential: !!response?.credential });
@@ -176,6 +192,9 @@ const LandingPage: React.FC = () => {
               Sign in with Google
               <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
             </Button>
+            <button onClick={handleDemoLogin} style={{ marginTop: '20px' }}>
+            Try Demo
+            </button>
           </div>
         </div>
         {/* Feature Cards */}
