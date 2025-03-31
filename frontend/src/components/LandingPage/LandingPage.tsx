@@ -13,7 +13,6 @@ const LandingPage: React.FC = () => {
   const navigate = useNavigate();
   const { login, isAuthenticated } = useAuth();
 
-  // Effect to handle navigation after successful authentication
   useEffect(() => {
     if (isAuthenticated) {
       navigate("/tracker");
@@ -22,26 +21,18 @@ const LandingPage: React.FC = () => {
 
   const handleDemoLogin = async () => {
     try {
-      const result = await googleSignInApi('demo_token');
+      const result = await googleSignInApi('demo');
       console.log('Demo Login Success:', result);
-  
-      // Assuming result contains access_token and user
-      const user = {
-        ...result.user,
-        id: result.user.id.toString() // Convert id to string if needed
-      };
-      login(result.access_token, user); // Update auth context
+      login(result.access_token, result.user); // Pass user object
     } catch (error) {
       console.error('Demo Login Error:', error);
     }
   };
 
-  // Callback for handling the Google credential response
   const handleCredentialResponse = useCallback(async (response: any) => {
     console.log('Google sign-in response received:', { hasCredential: !!response?.credential });
     try {
-      const idToken = response.credential; // The Google ID token
-      
+      const idToken = response.credential;
       if (!idToken) {
         console.error('No ID token received from Google');
         return;
@@ -50,62 +41,22 @@ const LandingPage: React.FC = () => {
       console.log('Sending ID token to backend...');
       const result = await googleSignInApi(idToken);
 
-      if (!result?.access_token || !result?.user) {
+      if (!result?.access_token) {
         console.error('Invalid response from backend:', result);
         return;
       }
 
-      // Convert the id to string before passing to login
-      const user = {
-        ...result.user,
-        id: result.user.id.toString()
-      };
-
       console.log('Google sign-in successful, logging in user');
-      login(result.access_token, user);
-      // Navigation will be handled by the useEffect above
+      login(result.access_token, result.user); // Pass user object
     } catch (err) {
       console.error('Error during Google sign-in:', err);
       if (err instanceof Error) {
         console.error('Error details:', err.message);
       }
-      // Log the full error object for debugging
       console.error('Full error object:', JSON.stringify(err, null, 2));
     }
   }, [login]);
 
-  // Function to check if Google client is available
-  const isGoogleClientAvailable = () => {
-    return !!(window as any).google?.accounts?.id;
-  };
-
-  // Function to initialize Google client with proper error handling
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const initializeGoogleClient = () => {
-    if (!isGoogleClientAvailable()) {
-      console.error('Google client not available');
-      return false;
-    }
-
-    try {
-      (window as any).google.accounts.id.initialize({
-        client_id: CLIENT_ID,
-        callback: handleCredentialResponse,
-        auto_select: false,
-        cancel_on_tap_outside: true,
-        prompt_parent_id: 'g_id_onload', // Element ID where the button will be rendered
-        context: 'signin',
-        itp_support: true, // Enable Intelligent Tracking Prevention support
-        use_fedcm_for_prompt: true // Use the new FedCM API when available
-      });
-      return true;
-    } catch (err) {
-      console.error('Error initializing Google client:', err);
-      return false;
-    }
-  };
-
-  // Initialize the Google client when the component mounts
   useEffect(() => {
     const initializeGoogleClient = () => {
       if (!(window as any).google?.accounts?.id) {
@@ -122,7 +73,6 @@ const LandingPage: React.FC = () => {
           cancel_on_tap_outside: true
         });
 
-        // Render the button
         (window as any).google.accounts.id.renderButton(
           document.getElementById('googleSignInButton'),
           { theme: 'outline', size: 'large' }
@@ -134,10 +84,7 @@ const LandingPage: React.FC = () => {
       }
     };
 
-    // Try to initialize immediately
     initializeGoogleClient();
-
-    // Also set up a retry mechanism
     const retryInterval = setInterval(() => {
       if ((window as any).google?.accounts?.id) {
         initializeGoogleClient();
@@ -145,11 +92,9 @@ const LandingPage: React.FC = () => {
       }
     }, 1000);
 
-    // Cleanup
     return () => clearInterval(retryInterval);
   }, [handleCredentialResponse]);
 
-  // Custom handler to trigger the Google sign-in prompt
   const handleGoogleSignIn = () => {
     const googleObj = (window as any).google;
     if (!googleObj?.accounts?.id) {
@@ -171,7 +116,6 @@ const LandingPage: React.FC = () => {
   return (
     <div className="min-h-screen bg-gradient-to-b from-gray-900 to-gray-950">
       <main className="container mx-auto px-4 py-16 flex flex-col items-center">
-        {/* Hero Section */}
         <div className="text-center space-y-6 max-w-3xl mx-auto mb-20">
           <h1 className="text-4xl md:text-6xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-emerald-400">
             Welcome to Better Me
@@ -180,9 +124,7 @@ const LandingPage: React.FC = () => {
             Track your habits and build a better version of yourself, one day at a time.
           </p>
           <div className="flex flex-col items-center space-y-4">
-            {/* Google Sign-In Button Container */}
             <div id="googleSignInButton" className="mt-4"></div>
-            {/* Fallback button in case Google button fails to render */}
             <Button 
               size="lg" 
               className="group mt-4 hidden" 
@@ -193,11 +135,10 @@ const LandingPage: React.FC = () => {
               <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-1" />
             </Button>
             <button onClick={handleDemoLogin} style={{ marginTop: '20px' }}>
-            Try Demo
+              Try Demo
             </button>
           </div>
         </div>
-        {/* Feature Cards */}
         <div className="grid md:grid-cols-3 gap-8 w-full max-w-5xl">
           <Card className="p-6 bg-gray-900/50 backdrop-blur border-gray-800 hover:border-gray-700 transition-all hover:-translate-y-1">
             <div className="h-12 w-12 rounded-lg bg-emerald-500/10 flex items-center justify-center mb-6">
@@ -227,7 +168,6 @@ const LandingPage: React.FC = () => {
             </p>
           </Card>
         </div>
-        {/* Footer Component */}
         <Footer />
       </main>
     </div>

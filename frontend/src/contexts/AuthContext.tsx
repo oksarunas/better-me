@@ -5,8 +5,7 @@ interface User {
   id: string;
   email: string;
   name: string;
-  avatar_url?: string;  // Make it optional since not all users might have an avatar
-  // Add other user properties as needed
+  avatar_url: string | null; // Updated to match backend and api.ts
 }
 
 // Define the authentication context type
@@ -14,7 +13,7 @@ interface AuthContextType {
   isAuthenticated: boolean;
   user: User | null;
   token: string | null;
-  login: (token: string, user: User) => void;
+  login: (token: string, user: User | null) => void; // Allow null
   logout: () => void;
 }
 
@@ -27,29 +26,35 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
 
-  const login = (newToken: string, userData: User) => {
+  const login = (newToken: string, userData: User | null) => { // Allow null
     console.log('Attempting to login with token:', { hasToken: !!newToken, userData });
-    
+
     if (!newToken || newToken === "undefined") {
       console.error('Invalid token received during login');
       return;
     }
 
-    if (!userData || !userData.id) {
+    // If userData is null, we still proceed with token-only login
+    if (userData && (!userData.id)) {
       console.error('Invalid user data received during login');
       return;
     }
-    
+
     try {
-      // Store token and user in localStorage
+      // Store token in localStorage
       localStorage.setItem('authToken', newToken);
-      localStorage.setItem('user', JSON.stringify(userData));
-      
+      // Store user data only if provided
+      if (userData) {
+        localStorage.setItem('user', JSON.stringify(userData));
+      } else {
+        localStorage.removeItem('user'); // Clear if no user data
+      }
+
       // Update state
       setToken(newToken);
       setUser(userData);
       setIsAuthenticated(true);
-      
+
       console.log('Login successful, state updated');
     } catch (error) {
       console.error('Error during login:', error);
@@ -66,7 +71,7 @@ export const AuthProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     // Remove token and user from localStorage
     localStorage.removeItem('authToken');
     localStorage.removeItem('user');
-    
+
     // Clear state
     setToken(null);
     setUser(null);

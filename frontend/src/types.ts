@@ -1,4 +1,3 @@
-// types.ts
 import { IndexRouteObject, NonIndexRouteObject } from "react-router-dom";
 
 // Extend the built-in IndexRouteObject to include our meta property
@@ -9,7 +8,6 @@ export interface CustomIndexRouteObject extends IndexRouteObject {
 }
 
 // Extend the built-in NonIndexRouteObject to include our meta property
-// Also, update the children property to be an array of our custom route objects
 export interface CustomNonIndexRouteObject extends NonIndexRouteObject {
   meta?: {
     title: string;
@@ -17,31 +15,50 @@ export interface CustomNonIndexRouteObject extends NonIndexRouteObject {
   children?: CustomRouteObject[];
 }
 
-// Create a union type for our custom route objects
 export type CustomRouteObject = CustomIndexRouteObject | CustomNonIndexRouteObject;
 
-// (Other types remain unchanged...)
-export interface WeeklyData {
-  date: string;
-  completed: number;
-  total: number;
-  status?: boolean;
+// User type (moved from AuthContext.tsx for reuse)
+export interface User {
+  id: string;
+  email: string;
+  name: string;
+  avatar_url: string | null;
 }
 
+// Habit type (matches ProgressRead from schemas.py)
 export interface Habit {
   id: number;
   habit: string;
   status: boolean;
   streak: number;
-  category?: string;
-  goal: number;
+  category?: string; // Optional, nullable in backend
+  date: string; // Added to match backend response
+  user_id: number; // Added for completeness
 }
 
+// RawHabit type (for /progress/weekly response)
 export interface RawHabit {
+  id: number; // Added if backend includes it
+  habit: string; // Added if backend includes it
   date: string;
   status: boolean;
+  user_id: number; // Added if backend includes it
 }
 
+// WeeklyData type (processed data for HabitTracker)
+export interface WeeklyData {
+  date: string;
+  completed: number;
+  total: number;
+}
+
+// Analytics type (for /analytics/completion response)
+export interface AnalyticsData {
+  completionRates: Record<string, number>; // e.g., {"7 hours of sleep": 0.0, "Read for 20 minutes": 0.0}
+  stackedData?: Record<string, number[]>; // Optional, if backend provides daily counts
+}
+
+// Props interfaces
 export interface HabitListProps {
   habits: Habit[];
   onToggleHabit: (habitId: number, newStatus: boolean) => void;

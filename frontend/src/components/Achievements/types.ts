@@ -48,3 +48,9 @@ export interface AchievementFilters {
   status: 'all' | 'locked' | 'unlocked';
   sortBy: 'progress' | 'recent' | 'alphabetical';
 }
+
+export interface Stats {
+  totalAchievements: number;
+  unlockedAchievements: number;
+  totalPoints: number;
+}

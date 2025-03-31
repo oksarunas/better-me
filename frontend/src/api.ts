@@ -1,4 +1,4 @@
-import { WeeklyData, RawHabit, Habit } from './types';
+import { WeeklyData, RawHabit, Habit, AnalyticsData, User } from './types'; // Added User
 import { axiosInstance } from './api/axios-config';
 import axios, { type AxiosRequestConfig, AxiosError } from 'axios';
 
@@ -18,7 +18,7 @@ export async function apiFetch<T>(
             url: endpoint,
             headers: {
                 'Content-Type': 'application/json',
-                'Accept': 'application/json', // Explicitly request JSON response
+                'Accept': 'application/json',
                 ...options.headers
             },
             ...options
@@ -35,7 +35,7 @@ export async function apiFetch<T>(
                 endpoint,
                 status,
                 headers,
-                responseData: typeof responseData === 'string' ? responseData.substring(0, 200) : responseData // Log first 200 chars if HTML
+                responseData: typeof responseData === 'string' ? responseData.substring(0, 200) : responseData
             });
 
             if (typeof responseData === 'string' && responseData.includes('<html')) {
@@ -51,17 +51,12 @@ export async function apiFetch<T>(
 /**
  * Authenticate user with Google ID token
  * @param idToken - The Google ID token from the front-end
- * @returns User info and access token from the backend
+ * @returns Access token, token type, and user info from the backend
  */
 export async function googleSignInApi(idToken: string): Promise<{
     access_token: string;
     token_type: string;
-    user: {
-        id: number;
-        email: string;
-        name: string;
-        avatar_url: string;
-    }
+    user: User;
 }> {
     try {
         return await apiFetch("/auth/google", {
@@ -79,8 +74,8 @@ export async function googleSignInApi(idToken: string): Promise<{
  * @param date - The date (YYYY-MM-DD) for which to fetch habits
  * @returns List of habits
  */
-export async function fetchHabitsApi(date: string): Promise<any> {
-    return apiFetch<any>(`/progress/${date}`);
+export async function fetchHabitsApi(date: string): Promise<Habit[]> {
+    return apiFetch<Habit[]>(`/progress/${date}`);
 }
 
 /**
@@ -126,11 +121,22 @@ export async function fetchWeeklyHabitsApi(): Promise<WeeklyData[]> {
 }
 
 /**
- * Fetch analytics data for a date range
- * @param startDate - Start date (YYYY-MM-DD)
- * @param endDate - End date (YYYY-MM-DD)
+ * Fetch analytics data for a number of days
+ * @param days - Number of days to look back (default 30)
  * @returns Analytics data
  */
-export async function fetchAnalyticsApi(startDate: string, endDate: string): Promise<any> {
-    return apiFetch<any>(`/analytics?start=${startDate}&end=${endDate}`);
+export async function fetchAnalyticsApi(days: number = 30): Promise<AnalyticsData> {
+    return apiFetch<AnalyticsData>(`/analytics/completion?days=${days}`);
+}
+
+/**
+ * Create a new habit
+ * @param habit - The habit data to create
+ * @returns The created habit
+ */
+export async function createHabitApi(habit: Omit<Habit, 'id' | 'streak'>): Promise<Habit> {
+    return apiFetch<Habit>('/habits', {
+        method: "POST",
+        data: habit
+    });
 }

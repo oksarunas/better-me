@@ -13,9 +13,6 @@ import {
   Code,
   Coffee,
   Book,
-  // Keeping imports commented for future use
-  // NutIcon as Vitamins,
-  // Droplets,
   Trophy,
   Flame,
   Filter,
@@ -32,8 +29,8 @@ import { mockAchievements } from '../Achievements/Achievements';
 import { Label } from '../ui/label';
 import { Achievement } from '../Achievements/types';
 
-import { fetchHabitsApi, updateHabitApi, fetchWeeklyHabitsApi, fetchAnalyticsApi } from "../../api"
-import { Habit as HabitType, WeeklyData } from "../../types"
+import { fetchHabitsApi, updateHabitApi, fetchWeeklyHabitsApi, fetchAnalyticsApi, createHabitApi } from "../../api"
+import { Habit, WeeklyData, AnalyticsData } from "../../types" // Updated imports
 import { useAuth } from "../../contexts/AuthContext"
 
 const listItemVariants = {
@@ -42,16 +39,16 @@ const listItemVariants = {
 }
 
 export default function HabitTracker() {
-  useAuth()
+  const { user } = useAuth()
   const [selectedDate, setSelectedDate] = React.useState<Date | undefined>(new Date())
   const [progress, setProgress] = React.useState(50)
   const [filter, setFilter] = React.useState("all")
   const [theme, setTheme] = React.useState("dark")
   const [loading, setLoading] = React.useState(true)
   const [error, setError] = React.useState<string | null>(null)
-  const [backendHabits, setBackendHabits] = React.useState<HabitType[]>([])
-  const [, setWeeklyData] = React.useState<WeeklyData[]>([])
-  const [analyticsData, setAnalyticsData] = React.useState<any>(null)
+  const [backendHabits, setBackendHabits] = React.useState<Habit[]>([])
+  const [weeklyData, setWeeklyData] = React.useState<WeeklyData[]>([])
+  const [analyticsData, setAnalyticsData] = React.useState<AnalyticsData | null>(null)
 
   React.useEffect(() => {
     const fetchData = async () => {
@@ -63,18 +60,15 @@ export default function HabitTracker() {
         const [habitsData, weeklyDataResponse, analyticsDataResponse] = await Promise.all([
           fetchHabitsApi(date),
           fetchWeeklyHabitsApi(),
-          fetchAnalyticsApi(
-            new Date(new Date().setDate(new Date().getDate() - 30)).toISOString().split('T')[0],
-            date
-          ),
+          fetchAnalyticsApi(30),
         ])
         
         setBackendHabits(habitsData)
         setWeeklyData(weeklyDataResponse)
         setAnalyticsData(analyticsDataResponse)
         
-        const completedCount = habitsData.filter((h: HabitType) => h.status).length
-        setProgress(Math.round((completedCount / habitsData.length) * 100))
+        const completedCount = habitsData.filter((h: Habit) => h.status).length
+        setProgress(Math.round((completedCount / habitsData.length) * 100) || 0) // Handle empty habits case
         
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to load data. Please try again.")
@@ -88,14 +82,17 @@ export default function HabitTracker() {
 
   const handleToggleHabit = async (habitId: number, newStatus: boolean) => {
     try {
-      await updateHabitApi(habitId, { status: newStatus })
+      const response = await updateHabitApi(habitId, { status: newStatus })
       setBackendHabits(habits => {
         const updatedHabits = habits.map(h => 
-          h.id === habitId ? { ...h, status: newStatus } : h
+          h.id === habitId ? { 
+            ...h, 
+            status: newStatus,
+            streak: response.streak
+          } : h
         );
-        // Update progress percentage
         const completedCount = updatedHabits.filter(h => h.status).length;
-        setProgress(Math.round((completedCount / updatedHabits.length) * 100));
+        setProgress(Math.round((completedCount / updatedHabits.length) * 100) || 0);
         return updatedHabits;
       });
     } catch (err) {
@@ -108,7 +105,6 @@ export default function HabitTracker() {
     label: habit.habit,
     category: habit.category || "Uncategorized",
     streak: habit.streak,
-    goal: 30,
     id: habit.id,
     status: habit.status
   }))
@@ -137,9 +133,15 @@ export default function HabitTracker() {
     { name: "Week 4", progress: 50 },
   ]
 
-  const addHabit = (newHabit: Omit<HabitType, 'id' | 'streak'>) => {
-    setBackendHabits([...backendHabits, { ...newHabit, streak: 0, id: Math.floor(Math.random() * 1000) }])
-  }
+  const addHabit = async (newHabit: Omit<Habit, 'id' | 'streak'>) => {
+    try {
+        const createdHabit = await createHabitApi(newHabit);
+        setBackendHabits([...backendHabits, createdHabit]);
+    } catch (error) {
+        console.error('Failed to add habit:', error);
+        setError('Failed to add habit. Please try again.');
+    }
+};
 
   const getHabitCompletionCount = (habit: string) => {
     if (!analyticsData?.stackedData?.[habit]) return 0;
@@ -202,8 +204,9 @@ export default function HabitTracker() {
                         addHabit({
                           habit: formData.get("habitName") as string,
                           category: formData.get("category") as string,
-                          status: false, // Initial status as not completed
-                          goal: 1, // Default goal of 1, you might want to add a field for this // Default icon, you might want to add icon selection
+                          status: false,
+                          date: new Date().toISOString().split('T')[0], // Default to today
+                          user_id: user?.id ? parseInt(user.id) : 1, // Use logged-in user or default to 1
                         })
                       }}
                     >
@@ -298,7 +301,7 @@ export default function HabitTracker() {
             </CardHeader>
             <CardContent className="grid gap-4">
               {mockAchievements.map((achievement: Achievement) => {
-                const IconComponent = achievement.icon; // Get the icon component
+                const IconComponent = achievement.icon;
                 return (
                   <div
                     key={achievement.title}
@@ -394,7 +397,7 @@ export default function HabitTracker() {
               <CardContent>
                 <div className="flex items-center gap-2">
                   <Flame className="h-5 w-5 text-orange-500" />
-                  <p className={`text-2xl font-bold ${theme === "dark" ? "text-white" : "text-slate-900"}`}>7 Days</p>
+                  <p className={`text-2xl font-bold ${theme === "dark" ? "text-white" : "text Wslate-900"}`}>7 Days</p>
                 </div>
               </CardContent>
             </Card>

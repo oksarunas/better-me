@@ -1,94 +1,64 @@
+import logging
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.sql import text
+from fastapi import HTTPException
+
+logger = logging.getLogger(__name__)
 
 async def recalculate_streaks_for_habit(db: AsyncSession, habit: str) -> None:
-    """
-    Recalculate streaks for a specific habit.
-    """
+    """Recalculate streaks for a specific habit."""
     try:
+        logger.info(f"Recalculating streaks for habit '{habit}'")
         await db.execute(
             text("""
-                WITH habit_data AS (
-                    SELECT
-                        id,
-                        habit,
-                        status,
-                        date,
-                        LAG(date) OVER (PARTITION BY habit ORDER BY date) AS prev_date
+                WITH ranked_data AS (
+                    SELECT id, habit, date, status,
+                           ROW_NUMBER() OVER (PARTITION BY habit ORDER BY date)
+                           - ROW_NUMBER() OVER (PARTITION BY habit, status ORDER BY date) AS streak_group
                     FROM progress
-                    WHERE habit = :habit
-                ),
-                streak_calculation AS (
-                    SELECT
-                        id,
-                        habit,
-                        status,
-                        date,
-                        CASE 
-                            WHEN prev_date IS NULL OR date = prev_date + INTERVAL '1 day' THEN 1
-                            ELSE 0
-                        END AS streak_status,
-                        SUM(
-                            CASE 
-                                WHEN prev_date IS NULL OR date = prev_date + INTERVAL '1 day' THEN 1
-                                ELSE 0
-                            END
-                        ) OVER (PARTITION BY habit ORDER BY date) AS calculated_streak
-                    FROM habit_data
+                    WHERE habit = :habit AND status = true
                 )
                 UPDATE progress
-                SET streak = streak_calculation.calculated_streak
-                FROM streak_calculation
-                WHERE progress.id = streak_calculation.id;
+                SET streak = COALESCE((
+                    SELECT COUNT(*) 
+                    FROM ranked_data 
+                    WHERE ranked_data.id = progress.id AND ranked_data.streak_group IS NOT NULL
+                ), 0)
+                WHERE habit = :habit;
             """),
             {"habit": habit}
         )
         await db.commit()
+        logger.info(f"Streaks recalculated for habit '{habit}'")
     except Exception as e:
         await db.rollback()
-        raise RuntimeError(f"Error recalculating streaks for habit '{habit}': {e}")
+        logger.error(f"Error recalculating streaks for habit '{habit}': {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to recalculate streaks for '{habit}': {str(e)}")
 
-async def recalculate_all_streaks(db: AsyncSession) -> None:
-    """
-    Recalculate streaks for all habits.
-    """
+async def recalc_all_streaks(db: AsyncSession) -> None:
+    """Recalculate streaks for all habits."""
     try:
+        logger.info("Starting streak recalculation for all habits")
         await db.execute(
             text("""
-                WITH habit_data AS (
-                    SELECT
-                        id,
-                        habit,
-                        status,
-                        date,
-                        LAG(date) OVER (PARTITION BY habit ORDER BY date) AS prev_date
+                WITH ranked_data AS (
+                    SELECT id, habit, date, status,
+                           ROW_NUMBER() OVER (PARTITION BY habit ORDER BY date)
+                           - ROW_NUMBER() OVER (PARTITION BY habit, status ORDER BY date) AS streak_group
                     FROM progress
-                ),
-                streak_calculation AS (
-                    SELECT
-                        id,
-                        habit,
-                        status,
-                        date,
-                        CASE 
-                            WHEN prev_date IS NULL OR date = prev_date + INTERVAL '1 day' THEN 1
-                            ELSE 0
-                        END AS streak_status,
-                        SUM(
-                            CASE 
-                                WHEN prev_date IS NULL OR date = prev_date + INTERVAL '1 day' THEN 1
-                                ELSE 0
-                            END
-                        ) OVER (PARTITION BY habit ORDER BY date) AS calculated_streak
-                    FROM habit_data
+                    WHERE status = true
                 )
                 UPDATE progress
-                SET streak = streak_calculation.calculated_streak
-                FROM streak_calculation
-                WHERE progress.id = streak_calculation.id;
+                SET streak = COALESCE((
+                    SELECT COUNT(*) 
+                    FROM ranked_data 
+                    WHERE ranked_data.id = progress.id AND ranked_data.streak_group IS NOT NULL
+                ), 0);
             """)
         )
         await db.commit()
+        logger.info("Streak recalculation completed successfully")
     except Exception as e:
         await db.rollback()
-        raise RuntimeError(f"Error recalculating streaks for all habits: {e}")
+        logger.error(f"Error during streak recalculation: {e}")
+        raise HTTPException(status_code=500, detail=f"Failed to recalculate streaks: {str(e)}")

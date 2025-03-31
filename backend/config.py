@@ -1,55 +1,40 @@
 import os
 import logging
 from dotenv import load_dotenv
-from sqlalchemy.engine.url import make_url
-from schemas import HabitEnum
 
 # Load environment variables
 if not load_dotenv():
     logging.warning(".env file not found. Using system environment variables.")
 
-# Initialize logging
-logger = logging.getLogger(__name__)
+def configure_logging() -> None:
+    """Configure application-wide logging."""
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s [%(levelname)s] %(name)s - %(message)s",
+    )
+    logging.getLogger(__name__).info("Logging configured.")
 
 class Config:
     """Application configuration class."""
 
-    # Load authentication & security settings
-    SECRET_KEY = os.getenv("SECRET_KEY", "fallback-secret-key")
-    GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "fallback-client-id")
-    ALGORITHM = os.getenv("ALGORITHM", "HS256")
-    ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", 60))
+    # General settings
+    ENV: str = os.getenv("ENV", "development")
+    HOST: str = os.getenv("HOST", "0.0.0.0")
+    PORT: int = int(os.getenv("PORT", "8001"))
+    DEBUG: bool = os.getenv("DEBUG", "false").lower() == "true"
 
-    # Allowed habits from schema
-    try:
-        ALLOWED_HABITS = HabitEnum.list_values()
-    except AttributeError as e:
-        logger.error(f"Failed to load allowed habits: {e}")
-        ALLOWED_HABITS = []
+    # Authentication & security
+    SECRET_KEY: str = os.getenv("SECRET_KEY", "fallback-secret-key")
+    GOOGLE_CLIENT_ID: str = os.getenv("GOOGLE_CLIENT_ID", "fallback-client-id")
+    ALGORITHM: str = os.getenv("ALGORITHM", "HS256")
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "60"))
 
-    # Debug mode
-    DEBUG = os.getenv("DEBUG", "false").lower() == "true"
-    if DEBUG:
-        logger.info("Debug mode enabled.")
+    # Database
+    DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///backend/progress.db")
 
-    # Host & Port settings
-    try:
-        PORT = int(os.getenv("PORT", 8001))
-        if not (1024 <= PORT <= 65535):
-            raise ValueError(f"Invalid PORT: {PORT}. Must be between 1024 and 65535.")
-    except ValueError as e:
-        logger.error(f"Invalid PORT value: {e}. Falling back to default (8001).")
-        PORT = 8001
-
-    HOST = os.getenv("HOST", "0.0.0.0")
-
-    # CORS settings (Prevents `*` in production)
-    ALLOWED_ORIGINS = os.getenv("ALLOWED_ORIGINS", "").split(",")
-    #ALLOWED_ORIGINS = [origin.strip() for origin in ALLOWED_ORIGINS if origin.strip()]
-    
-    logger.info(f"CORS Allowed Origins: {ALLOWED_ORIGINS}")
-    
-    if not ALLOWED_ORIGINS:
+    # CORS
+    ALLOWED_ORIGINS: list[str] = os.getenv("ALLOWED_ORIGINS", "").split(",")
+    if not ALLOWED_ORIGINS or not any(o.strip() for o in ALLOWED_ORIGINS):
         ALLOWED_ORIGINS = [
             "http://localhost:3000",
             "http://127.0.0.1:3000",
@@ -58,29 +43,22 @@ class Config:
             "http://localhost:8001",
             "http://localhost:8000",
         ]
-    
-    if "*" in ALLOWED_ORIGINS and not DEBUG:
-        logger.warning("ALLOWED_ORIGINS set to '*'. This is insecure for production.")
-
-    # Database settings with validation
-    try:
-        # Updated the DATABASE_URL to point to the correct location of the database
-        # The default value is set to use a SQLite database located at backend/progress.db
-        # This can be overridden by setting the DATABASE_URL environment variable
-        DATABASE_URL = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///backend/progress.db")
-        make_url(DATABASE_URL)  # Validate DB URL format
-    except Exception as e:
-        logger.error(f"Invalid DATABASE_URL: {e}")
-        raise ValueError("DATABASE_URL is invalid. Please check your .env file.")
 
     @staticmethod
-    def validate():
+    def validate() -> None:
         """Validate critical configuration variables."""
+        logger = logging.getLogger(__name__)
         if not Config.DATABASE_URL:
-            raise ValueError("DATABASE_URL is not set. Cannot connect to the database.")
-        if not Config.SECRET_KEY or Config.SECRET_KEY == "fallback-secret-key":
-            raise ValueError("SECRET_KEY is not set. Set a strong key in .env.")
-        logger.info("Configuration validation passed.")
+            raise ValueError("DATABASE_URL is not set")
+        if Config.SECRET_KEY == "fallback-secret-key":
+            logger.warning("Using fallback SECRET_KEY. Set a strong key in .env for security")
+        if "*" in Config.ALLOWED_ORIGINS and Config.ENV != "development":
+            logger.warning("ALLOWED_ORIGINS includes '*'. This is insecure for production")
+        if not 1024 <= Config.PORT <= 65535:
+            logger.error(f"Invalid PORT: {Config.PORT}. Resetting to 8001")
+            Config.PORT = 8001
+        logger.info("Configuration validated")
 
-# Validate configuration on module load
+# Configure logging and validate on import
+configure_logging()
 Config.validate()
