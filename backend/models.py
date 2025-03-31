@@ -31,6 +31,7 @@ class Progress(Base):
     status = Column(Boolean, nullable=False, default=False)
     streak = Column(Integer, nullable=False, default=0)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    category = Column(String, nullable=True)
 
     user = relationship("User", back_populates="progress")
 

@@ -4,7 +4,7 @@ from typing import List, Optional, Dict
 from fastapi import HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
-from schemas import ProgressCreate, ProgressRead, ProgressUpdate, BulkUpdate, ALLOWED_HABITS, HabitEnum
+from schemas import ProgressCreate, ProgressRead, ProgressUpdate, BulkUpdate
 from user_repository import (
     fetch_all_progress_by_date, fetch_progress_date_range, fetch_all_habits,
     update_progress_status, fetch_progress_by_date_and_habit
@@ -15,11 +15,7 @@ logger = logging.getLogger(__name__)
 
 async def update_progress(progress: ProgressCreate, db: AsyncSession, user_id: int) -> None:
     """Update a single habit progress entry."""
-    if not ALLOWED_HABITS:
-        raise HTTPException(status_code=500, detail="No habits configured in the system")
-    habit_str = progress.habit.value
-    if habit_str not in ALLOWED_HABITS:
-        raise HTTPException(status_code=400, detail=f"Invalid habit: {habit_str}")
+    habit_str = progress.habit
     try:
         await update_progress_status(
             db=db, date_obj=progress.date, habit=habit_str, user_id=user_id,
@@ -32,17 +28,11 @@ async def update_progress(progress: ProgressCreate, db: AsyncSession, user_id: i
 
 async def bulk_update_progress(data: BulkUpdate, db: AsyncSession, user_id: int) -> None:
     """Update multiple habit progress entries for a specific date."""
-    if not ALLOWED_HABITS:
-        raise HTTPException(status_code=500, detail="No habits configured in the system")
-    for update in data.updates:
-        habit_str = update.habit.value
-        if habit_str not in ALLOWED_HABITS:
-            raise HTTPException(status_code=400, detail=f"Invalid habit: {habit_str}")
     try:
-        for update in data.updates:
+        for habit, status in data.updates.items():  # Adjusted to dict structure
             await update_progress_status(
-                db=db, date_obj=data.date, habit=update.habit.value, user_id=user_id,
-                updates={"status": update.status}
+                db=db, date_obj=data.date, habit=habit, user_id=user_id,
+                updates={"status": status}
             )
         logger.info(f"Bulk update successful for date {data.date} for user {user_id}")
     except Exception as e:
@@ -51,21 +41,26 @@ async def bulk_update_progress(data: BulkUpdate, db: AsyncSession, user_id: int)
 
 async def get_progress_by_date(date_obj: date, db: AsyncSession, user_id: int) -> List[ProgressRead]:
     """Get progress for all habits on a specific date."""
-    if not ALLOWED_HABITS:
-        raise HTTPException(status_code=500, detail="No habits configured in the system")
     try:
+        # Fetch all habits for the user
+        habits = await fetch_all_habits(db, user_id)
+        if not habits:
+            logger.info(f"No habits found for user {user_id}, returning empty progress")
+            return []
+
         rows = await fetch_all_progress_by_date(db, date_obj, user_id)
         row_map = {r.habit: r for r in rows}
         completed = sum(1 for r in rows if r.status)
-        completion_pct = round((completed / len(ALLOWED_HABITS)) * 100) if ALLOWED_HABITS else 0
+        completion_pct = round((completed / len(habits)) * 100) if habits else 0
 
         results: List[ProgressRead] = []
-        for habit in ALLOWED_HABITS:
+        for habit in habits:
             if habit in row_map:
                 row = row_map[habit]
                 results.append(ProgressRead(
-                    id=row.id, date=row.date, habit=HabitEnum(row.habit),
-                    status=row.status, streak=row.streak, completion_pct=completion_pct
+                    id=row.id, date=row.date, habit=row.habit,
+                    status=row.status, streak=row.streak, completion_pct=completion_pct,
+                    category=row.category  # Include category
                 ))
             else:
                 await update_progress_status(
@@ -74,8 +69,9 @@ async def get_progress_by_date(date_obj: date, db: AsyncSession, user_id: int) -
                 )
                 new_record = await fetch_progress_by_date_and_habit(db, date_obj, habit, user_id)
                 results.append(ProgressRead(
-                    id=new_record.id, date=new_record.date, habit=HabitEnum(new_record.habit),
-                    status=new_record.status, streak=new_record.streak, completion_pct=completion_pct
+                    id=new_record.id, date=new_record.date, habit=new_record.habit,
+                    status=new_record.status, streak=new_record.streak, completion_pct=completion_pct,
+                    category=new_record.category  # Include category
                 ))
         return results
     except Exception as e:
@@ -84,27 +80,30 @@ async def get_progress_by_date(date_obj: date, db: AsyncSession, user_id: int) -
 
 async def get_weekly_progress(db: AsyncSession, user_id: int, start_date: Optional[date] = None) -> List[ProgressRead]:
     """Fetch progress for the last 7 days for each habit."""
-    if not ALLOWED_HABITS:
-        raise HTTPException(status_code=500, detail="No habits configured in the system")
     today = date.today()
     week_start = start_date or (today - timedelta(days=6))
     try:
+        habits = await fetch_all_habits(db, user_id)
+        if not habits:
+            logger.info(f"No habits found for user {user_id}, returning empty weekly progress")
+            return []
+
         rows = await fetch_progress_date_range(db, week_start, today, user_id)
         row_map = {(row.date, row.habit): row for row in rows}
         results: List[ProgressRead] = []
 
         for i in range(7):
             current_date = week_start + timedelta(days=i)
-            for habit in ALLOWED_HABITS:
+            for habit in habits:
                 key = (current_date, habit)
                 if key in row_map:
                     row = row_map[key]
                     results.append(ProgressRead(
-                        id=row.id, date=row.date, habit=HabitEnum(row.habit),
-                        status=row.status, streak=row.streak, completion_pct=None
+                        id=row.id, date=row.date, habit=row.habit,
+                        status=row.status, streak=row.streak, completion_pct=None,
+                        category=row.category  # Include category
                     ))
                 else:
-                    # Check if record exists before inserting
                     existing = await fetch_progress_by_date_and_habit(db, current_date, habit, user_id)
                     if not existing:
                         await update_progress_status(
@@ -113,20 +112,22 @@ async def get_weekly_progress(db: AsyncSession, user_id: int, start_date: Option
                         )
                         new_record = await fetch_progress_by_date_and_habit(db, current_date, habit, user_id)
                         results.append(ProgressRead(
-                            id=new_record.id, date=new_record.date, habit=HabitEnum(new_record.habit),
-                            status=new_record.status, streak=new_record.streak, completion_pct=None
+                            id=new_record.id, date=new_record.date, habit=new_record.habit,
+                            status=new_record.status, streak=new_record.streak, completion_pct=None,
+                            category=new_record.category  # Include category
                         ))
                     else:
                         results.append(ProgressRead(
-                            id=existing.id, date=existing.date, habit=HabitEnum(existing.habit),
-                            status=existing.status, streak=existing.streak, completion_pct=None
+                            id=existing.id, date=existing.date, habit=existing.habit,
+                            status=existing.status, streak=existing.streak, completion_pct=None,
+                            category=existing.category  # Include category
                         ))
         logger.info(f"Weekly progress fetched for user {user_id}")
         return results
     except Exception as e:
         logger.error(f"Error fetching weekly progress: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to fetch weekly progress: {str(e)}")
-    
+
 async def get_completion_stats(db: AsyncSession, user_id: int, start_date: date, end_date: date) -> Dict[str, float]:
     """Calculate habit completion percentages for a date range."""
     try:
@@ -155,7 +156,6 @@ async def fill_missing_data(db: AsyncSession, habits: List[str], user_id: int) -
         for habit in habits:
             for i in range(31):  # Last 30 days + today
                 current_date = today - timedelta(days=i)
-                # Let update_progress_status handle existence check
                 await update_progress_status(
                     db=db, date_obj=current_date, habit=habit, user_id=user_id,
                     updates={"status": False}
@@ -180,7 +180,10 @@ async def patch_progress_record(progress_id: int, updates: ProgressUpdate, db: A
             setattr(record, key, value)
         await db.commit()
         await db.refresh(record)
-        return ProgressRead.from_orm(record)
+        return ProgressRead(
+            id=record.id, date=record.date, habit=record.habit,
+            status=record.status, streak=record.streak, category=record.category
+        )
     except HTTPException as he:
         raise he
     except Exception as e:

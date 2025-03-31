@@ -196,22 +196,34 @@ async def health_check(db: AsyncSession = Depends(get_db)) -> dict:
         raise HTTPException(status_code=503, detail=app_status)
     return app_status
 
-@router.post("/habits", response_model=dict)
-async def create_habit(habit: HabitCreate, db: AsyncSession = Depends(get_db)):
+@router.post("/habits", response_model=ProgressRead)  # Update response_model
+async def create_habit(
+    habit: HabitCreate, 
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)  # Optional: enforce authenticated user
+):
     logger.info(f"Creating habit: {habit.habit} for user {habit.user_id}")
-    db_habit = habit(
+    db_progress = Progress(
         habit=habit.habit,
         category=habit.category,
-        user_id=habit.user_id,
+        user_id=habit.user_id,  # Or current_user.id if using authentication
         date=habit.date,
         status=False,
         streak=0
     )
-    db.add(db_habit)
+    db.add(db_progress)
     try:
         await db.commit()
-        await db.refresh(db_habit)
-        return db_habit.__dict__
+        await db.refresh(db_progress)
+        # Return as ProgressRead instead of __dict__
+        return ProgressRead(
+            id=db_progress.id,
+            date=db_progress.date,
+            habit=db_progress.habit,
+            status=db_progress.status,
+            streak=db_progress.streak,
+            category=db_progress.category
+        )
     except Exception as e:
         await db.rollback()
         logger.error(f"Failed to create habit: {str(e)}")
