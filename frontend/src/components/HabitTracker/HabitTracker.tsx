@@ -7,7 +7,7 @@ import { Header } from "./Header";
 import HabitList from "./HabitList";
 import WeeklyOverview from "./WeeklyOverview";
 import AnalyticsSection from "./Analytics";
-import { motion } from "framer-motion"; // Import framer-motion
+import { motion } from "framer-motion";
 
 export default function HabitTracker() {
   const { user } = useAuth();
@@ -108,7 +108,6 @@ export default function HabitTracker() {
   const completedHabits = filteredHabits.filter((h) => h.status).length;
   const totalHabits = filteredHabits.length;
 
-  // Animation variants
   const containerVariants = {
     hidden: { opacity: 0, y: 20 },
     visible: {
@@ -124,20 +123,20 @@ export default function HabitTracker() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800 p-6 text-gray-100">
+    <div className="min-h-screen bg-gradient-to-b from-slate-900 to-slate-800 p-4 sm:p-6 text-gray-100">
       {loading ? (
         <div className="flex items-center justify-center h-screen">
           <motion.div
             animate={{ rotate: 360 }}
             transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-            className="rounded-full h-12 w-12 border-t-2 border-b-2 border-indigo-500"
+            className="rounded-full h-10 w-10 sm:h-12 sm:w-12 border-t-2 border-b-2 border-indigo-500"
           />
         </div>
       ) : error ? (
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="text-red-400 p-4 text-center bg-red-900/20 rounded-lg mx-auto max-w-md"
+          className="text-red-400 p-4 text-center bg-red-900/20 rounded-lg mx-4 sm:mx-auto sm:max-w-md"
         >
           {error}
           <button
@@ -166,45 +165,45 @@ export default function HabitTracker() {
               onSearch={setSearch}
             />
           </motion.div>
-          <div className="grid gap-6 mt-6">
+          <div className="grid gap-4 mt-4 sm:gap-6 sm:mt-6 max-w-full">
             {totalHabits === 0 ? (
               <motion.div
                 variants={itemVariants}
-                className="text-center p-6 bg-gray-800/50 rounded-lg border border-gray-700"
+                className="text-center p-4 sm:p-6 bg-gray-800/50 rounded-lg border border-gray-700 mx-4 sm:mx-0"
               >
-                <h3 className="text-lg font-medium text-gray-300">No Habits Found</h3>
-                <p className="text-gray-400 mt-2">
+                <h3 className="text-base sm:text-lg font-medium text-gray-300">No Habits Found</h3>
+                <p className="text-gray-400 mt-2 text-sm sm:text-base">
                   {search ? "No habits match your search." : filter !== "all" ? "No habits in this category." : "Add some habits to get started!"}
                 </p>
               </motion.div>
             ) : (
-              <motion.div variants={itemVariants}>
+              <motion.div variants={itemVariants} className="w-full max-w-full">
                 <HabitList groupedHabits={groupedHabits} toggleHabit={handleToggleHabit} />
               </motion.div>
             )}
             {weeklyData.length === 0 ? (
               <motion.div
                 variants={itemVariants}
-                className="text-center p-6 bg-gray-800/50 rounded-lg border border-gray-700"
+                className="text-center p-4 sm:p-6 bg-gray-800/50 rounded-lg border border-gray-700 mx-4 sm:mx-0"
               >
-                <h3 className="text-lg font-medium text-gray-300">No Weekly Data</h3>
-                <p className="text-gray-400 mt-2">Complete some habits to see your weekly progress!</p>
+                <h3 className="text-base sm:text-lg font-medium text-gray-300">No Weekly Data</h3>
+                <p className="text-gray-400 mt-2 text-sm sm:text-base">Complete some habits to see your weekly progress!</p>
               </motion.div>
             ) : (
-              <motion.div variants={itemVariants}>
+              <motion.div variants={itemVariants} className="w-full max-w-full">
                 <WeeklyOverview weeklyData={weeklyData} todayDate={todayDate} />
               </motion.div>
             )}
             {!analyticsData || Object.keys(analyticsData.completionRates).length === 0 ? (
               <motion.div
                 variants={itemVariants}
-                className="text-center p-6 bg-gray-800/50 rounded-lg border border-gray-700"
+                className="text-center p-4 sm:p-6 bg-gray-800/50 rounded-lg border border-gray-700 mx-4 sm:mx-0"
               >
-                <h3 className="text-lg font-medium text-gray-300">No Analytics Yet</h3>
-                <p className="text-gray-400 mt-2">Track some habits to see your trends!</p>
+                <h3 className="text-base sm:text-lg font-medium text-gray-300">No Analytics Yet</h3>
+                <p className="text-gray-400 mt-2 text-sm sm:text-base">Track some habits to see your trends!</p>
               </motion.div>
             ) : (
-              <motion.div variants={itemVariants}>
+              <motion.div variants={itemVariants} className="w-full max-w-full">
                 <AnalyticsSection analyticsData={analyticsData} habits={backendHabits} />
               </motion.div>
             )}

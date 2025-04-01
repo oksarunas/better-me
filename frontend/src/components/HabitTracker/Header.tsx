@@ -19,7 +19,6 @@ interface HeaderProps {
 }
 
 export function Header({
-
   selectedDate,
   todayDate,
   setSelectedDate,
@@ -29,30 +28,31 @@ export function Header({
   onFilterChange,
   onSortChange,
   onSearch,
-}: HeaderProps){
+}: HeaderProps) {
   return (
     <motion.header
-    initial={{ opacity: 0, y: -20}}
-    animate={{ opacity: 1, y: 0}}
-    transition={{ duration: 0.3}}
-    className= "flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">My Habits</h1>
-          <p className="text-gray-400">
+      initial={{ opacity: 0, y: -20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3 }}
+      className="flex flex-col gap-4"
+    >
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div className="flex-1 min-w-0">
+          <h1 className="text-xl sm:text-2xl font-bold">My Habits</h1>
+          <p className="text-gray-400 text-sm sm:text-base flex flex-wrap gap-1">
             {completedHabits} of {totalHabits} Habits Completed
             {selectedDate === todayDate && (
               <Badge variant="success" className="ml-2">Today</Badge>
             )}
           </p>
         </div>
-        <div className="flex items-center gap-4">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-2 sm:gap-4 w-full sm:w-auto">
           <Select
             defaultValue="all"
             onValueChange={onFilterChange}
             aria-label="Filter habits by category"
           >
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-full sm:w-[180px]">
               <SelectValue placeholder="Filter by category" />
             </SelectTrigger>
             <SelectContent>
@@ -69,7 +69,7 @@ export function Header({
             onValueChange={onSortChange}
             aria-label="Sort habits"
           >
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-full sm:w-[180px]">
               <SelectValue placeholder="Sort by" />
             </SelectTrigger>
             <SelectContent>
@@ -83,18 +83,20 @@ export function Header({
           <Input
             type="search"
             placeholder="Search habits..."
-            className="w-[200px]"
+            className="w-full sm:w-[200px]"
             onChange={(e) => onSearch?.(e.target.value)}
             aria-label="Search habits"
           />
-          <Calendar className="h-5 w-5 text-gray-400" aria-hidden="true" />
+          <Calendar className="h-5 w-5 text-gray-400 hidden sm:block" aria-hidden="true" />
         </div>
       </div>
-      <DateSelector
-        selectedDate={selectedDate}
-        setSelectedDate={setSelectedDate}
-        handleDateChange={handleDateChange}
-      />
+      <div className="w-full max-w-full">
+        <DateSelector
+          selectedDate={selectedDate}
+          setSelectedDate={setSelectedDate}
+          handleDateChange={handleDateChange}
+        />
+      </div>
     </motion.header>
   );
-};
+}

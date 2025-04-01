@@ -17,7 +17,7 @@ interface DayData extends DailyAggregate {
 
 const HabitBarChart = ({ data, className = "" }: { data: DayData[]; className?: string }) => {
   return (
-    <div className={`h-32 flex items-end gap-2 ${className}`}>
+    <div className={`h-24 sm:h-32 flex items-end gap-1 sm:gap-2 w-full max-w-full ${className}`}>
       {data.map((day, i) => (
         <div
           key={i}
@@ -26,7 +26,7 @@ const HabitBarChart = ({ data, className = "" }: { data: DayData[]; className?: 
           aria-valuemin={0}
           aria-valuemax={100}
           aria-label={`${format(parseISO(day.date), 'EEEE')} completion ${Math.round(day.percentage)}%`}
-          className="flex-1 rounded-t relative group cursor-pointer transform transition-all duration-300 ease-out"
+          className="flex-1 rounded-t relative group cursor-pointer transform transition-all duration-300 ease-out min-w-[20px]"
           style={{
             height: `${day.percentage}%`,
             backgroundColor: `hsla(${Math.min(day.percentage * 1.2, 120)}, 70%, 45%, 0.2)`,
@@ -47,15 +47,15 @@ const HabitBarChart = ({ data, className = "" }: { data: DayData[]; className?: 
 const DayCard = ({ data, isToday }: { data: DayData; isToday: boolean }) => {
   return (
     <div
-      className={`flex flex-col items-center p-2 rounded w-12 transition-colors duration-200
+      className={`flex flex-col items-center p-2 rounded w-10 sm:w-12 transition-colors duration-200
         ${isToday ? "bg-green-600 hover:bg-green-700" : "bg-gray-800 hover:bg-gray-700"}
       `}
       role="article"
       aria-label={`${format(parseISO(data.date), 'EEEE')} ${Math.round(data.percentage)}% completed`}
     >
-      <span className="text-sm font-semibold">{format(parseISO(data.date), "EEE")}</span>
+      <span className="text-xs sm:text-sm font-semibold">{format(parseISO(data.date), "EEE")}</span>
       <span className="text-xs">{format(parseISO(data.date), "d")}</span>
-      <Badge variant="outline" className="mt-1">
+      <Badge variant="outline" className="mt-1 text-xs">
         {Math.round(data.percentage)}%
       </Badge>
     </div>
@@ -63,7 +63,6 @@ const DayCard = ({ data, isToday }: { data: DayData; isToday: boolean }) => {
 };
 
 export default function WeeklyOverview({ weeklyData, todayDate, isLoading = false }: WeeklyOverviewProps) {
-  // Aggregate and compute percentages at the top level
   const aggregatedData = useMemo(() => {
     if (!weeklyData.length) return [];
 
@@ -82,7 +81,6 @@ export default function WeeklyOverview({ weeklyData, todayDate, isLoading = fals
       return acc;
     }, []);
 
-    // Add percentage to each day
     return result
       .map(day => ({
         ...day,
@@ -93,8 +91,8 @@ export default function WeeklyOverview({ weeklyData, todayDate, isLoading = fals
 
   if (isLoading) {
     return (
-      <Card className="p-6 bg-gray-900/30 border-gray-800 animate-pulse">
-        <div className="h-32 bg-gray-800 rounded mb-4" />
+      <Card className="p-4 sm:p-6 bg-gray-900/30 border-gray-800 animate-pulse">
+        <div className="h-24 bg-gray-800 rounded mb-4" />
         <div className="h-24 bg-gray-800 rounded" />
       </Card>
     );
@@ -102,18 +100,18 @@ export default function WeeklyOverview({ weeklyData, todayDate, isLoading = fals
 
   if (!aggregatedData.length) {
     return (
-      <Card className="p-6 bg-gray-900/30 border-gray-800">
+      <Card className="p-4 sm:p-6 bg-gray-900/30 border-gray-800">
         <p className="text-center text-gray-400">No data available for this week</p>
       </Card>
     );
   }
 
   return (
-    <Card className="p-6 bg-gray-900/30 border-gray-800">
-      <h3 className="text-lg font-medium mb-4">Weekly Habit Completion Progress</h3>
+    <Card className="p-4 sm:p-6 bg-gray-900/30 border-gray-800">
+      <h3 className="text-base sm:text-lg font-medium mb-4">Weekly Habit Completion Progress</h3>
       <HabitBarChart data={aggregatedData} />
-      <h4 className="mt-6 mb-2 text-md font-semibold">Week at a Glance</h4>
-      <div className="flex justify-between gap-2 overflow-x-auto">
+      <h4 className="mt-6 mb-2 text-sm sm:text-base font-semibold">Week at a Glance</h4>
+      <div className="flex flex-wrap justify-center gap-2 sm:gap-3 sm:justify-between w-full max-w-full">
         {aggregatedData.map((data) => (
           <DayCard
             key={data.date}

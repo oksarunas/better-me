@@ -13,8 +13,8 @@ interface HabitListProps {
 }
 
 export default function HabitList({ groupedHabits, toggleHabit }: HabitListProps) {
-  const STREAK_GOAL = 30; // Configurable streak goal
-  
+  const STREAK_GOAL = 30;
+
   return (
     <motion.div
       initial={{ opacity: 0 }}
@@ -25,19 +25,19 @@ export default function HabitList({ groupedHabits, toggleHabit }: HabitListProps
       {Object.entries(groupedHabits).map(([category, categoryHabits]) => (
         <div key={category} className="mb-8">
           <h3 className="text-lg font-bold mb-2">{category}</h3>
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-3 sm:gap-4 md:grid-cols-2 w-full max-w-full">
             {categoryHabits.map((habit) => (
               <Card
                 key={habit.id}
-                className={`p-4 transition-all hover:shadow-lg ${
+                className={`p-3 sm:p-4 transition-all hover:shadow-lg ${
                   habit.status ? "bg-gray-900/50 border-gray-800" : "bg-gray-900/30 border-gray-800"
-                } transform hover:scale-102 hover:-translate-y-1`}
+                } hover:scale-101`}
               >
-                <div className="flex items-center space-x-4">
+                <div className="flex items-center space-x-2 sm:space-x-4 flex-wrap gap-y-2">
                   <Checkbox
                     checked={habit.status}
                     onChange={(e) => toggleHabit(habit.id, e.target.checked)}
-                    className="h-5 w-5 transition-all data-[state=checked]:bg-green-500 hover:scale-110"
+                    className="h-5 w-5 transition-all data-[state=checked]:bg-green-500 hover:scale-105"
                     id={`habit-${habit.id}`}
                     aria-label={`Toggle ${habit.habit} status, currently ${habit.status ? "completed" : "incomplete"}`}
                   />
@@ -48,7 +48,7 @@ export default function HabitList({ groupedHabits, toggleHabit }: HabitListProps
                     >
                       {habit.habit}
                     </label>
-                    <div className="mt-1 flex items-center gap-2">
+                    <div className="mt-1 flex flex-wrap items-center gap-1 sm:gap-2">
                       <Badge
                         variant={habit.status ? "primary" : "secondary"}
                         className="transition-all"
@@ -65,12 +65,12 @@ export default function HabitList({ groupedHabits, toggleHabit }: HabitListProps
                         </Badge>
                       )}
                     </div>
-                    <div className="mt-2 relative">
+                    <div className="mt-2 w-full">
                       <Progress
                         className="h-2"
                         value={(habit.streak / STREAK_GOAL) * 100}
                       />
-                      <span className="text-xs text-gray-400 mt-1 inline-block">
+                      <span className="text-xs text-gray-400 mt-1 block">
                         {habit.streak} / {STREAK_GOAL} day streak
                       </span>
                     </div>

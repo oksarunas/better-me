@@ -19,7 +19,7 @@ class Config:
 
     # General settings
     ENV: str = os.getenv("ENV", "development")
-    HOST: str = os.getenv("HOST", "0.0.0.0")
+    HOST: str = os.getenv("HOST", "127.0.0.1")
     PORT: int = int(os.getenv("PORT", "8001"))
     DEBUG: bool = os.getenv("DEBUG", "false").lower() == "true"
 
