@@ -1,4 +1,4 @@
-import { WeeklyData, RawHabit, Habit, AnalyticsData, User } from './types'; // Added User
+import { WeeklyData, Habit, AnalyticsData, User } from './types'; // Added User
 import { axiosInstance } from './api/axios-config';
 import axios, { type AxiosRequestConfig, AxiosError } from 'axios';
 
@@ -48,95 +48,31 @@ export async function apiFetch<T>(
     }
 }
 
-/**
- * Authenticate user with Google ID token
- * @param idToken - The Google ID token from the front-end
- * @returns Access token, token type, and user info from the backend
- */
 export async function googleSignInApi(idToken: string): Promise<{
     access_token: string;
     token_type: string;
     user: User;
 }> {
-    try {
-        return await apiFetch("/auth/google", {
-            method: "POST",
-            data: { id_token: idToken }
-        });
-    } catch (error) {
-        console.error('Error during Google sign-in:', error);
-        throw error;
-    }
+    return apiFetch("/auth/google", { method: "POST", data: { id_token: idToken } });
 }
 
-/**
- * Fetch habits for a specific date
- * @param date - The date (YYYY-MM-DD) for which to fetch habits
- * @returns List of habits
- */
 export async function fetchHabitsApi(date: string): Promise<Habit[]> {
     return apiFetch<Habit[]>(`/progress/${date}`);
 }
 
-/**
- * Update a specific habit
- * @param habitId - The ID of the habit to update
- * @param body - The request body with updated habit properties
- * @returns The updated habit
- */
-export async function updateHabitApi(
-    habitId: number,
-    body: Partial<Habit>
-): Promise<Habit> {
-    if (!habitId || habitId <= 0) {
-        throw new Error("Invalid habitId provided for updateHabitApi");
-    }
-    return apiFetch<Habit>(`/progress/${habitId}`, {
-        method: "PATCH",
-        data: body
-    });
+export async function updateHabitApi(habitId: number, body: Partial<Habit>): Promise<Habit> {
+    if (!habitId || habitId <= 0) throw new Error("Invalid habitId provided for updateHabitApi");
+    return apiFetch<Habit>(`/progress/${habitId}`, { method: "PATCH", data: body });
 }
 
-/**
- * Fetch and process weekly habits data
- * @returns Structured weekly habits data
- */
 export async function fetchWeeklyHabitsApi(): Promise<WeeklyData[]> {
-    const rawData = await apiFetch<RawHabit[]>('/progress/weekly');
-    
-    return rawData.reduce((acc, item: RawHabit) => {
-        const existingDay = acc.find(entry => entry.date === item.date);
-        if (existingDay) {
-            existingDay.completed += item.status ? 1 : 0;
-            existingDay.total += 1;
-        } else {
-            acc.push({
-                date: item.date,
-                completed: item.status ? 1 : 0,
-                total: 1
-            });
-        }
-        return acc;
-    }, [] as WeeklyData[]);
+    return apiFetch<WeeklyData[]>('/progress/weekly');
 }
 
-/**
- * Fetch analytics data for a number of days
- * @param days - Number of days to look back (default 30)
- * @returns Analytics data
- */
 export async function fetchAnalyticsApi(days: number = 30): Promise<AnalyticsData> {
     return apiFetch<AnalyticsData>(`/analytics/completion?days=${days}`);
 }
 
-/**
- * Create a new habit
- * @param habit - The habit data to create
- * @returns The created habit
- */
 export async function createHabitApi(habit: Omit<Habit, 'id' | 'streak'>): Promise<Habit> {
-    return apiFetch<Habit>('/habits', {
-        method: "POST",
-        data: habit
-    });
+    return apiFetch<Habit>('/habits', { method: "POST", data: habit });
 }

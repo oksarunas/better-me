@@ -130,26 +130,71 @@ async def get_weekly_progress(db: AsyncSession, user_id: int, start_date: Option
     except Exception as e:
         logger.error(f"Error fetching weekly progress: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to fetch weekly progress: {str(e)}")
-async def get_completion_stats(db: AsyncSession, user_id: int, start_date: date, end_date: date) -> Dict[str, float]:
-    """Calculate habit completion percentages for a date range."""
-    try:
-        rows = await fetch_progress_date_range(db, start_date, end_date, user_id)
-        habit_counts = {}
-        habit_totals = {}
-        for row in rows:
-            habit_counts[row.habit] = habit_counts.get(row.habit, 0) + (1 if row.status else 0)
-            habit_totals[row.habit] = habit_totals.get(row.habit, 0) + 1
-        days = (end_date - start_date).days + 1
-        habits = await fetch_all_habits(db, user_id)
-        stats = {
-            habit: (habit_counts.get(habit, 0) / habit_totals.get(habit, days)) * 100
-            for habit in habits
+
+async def get_completion_stats(db: AsyncSession, user_id: int, start_date: date, end_date: date) -> Dict:
+    # Calculate number of days in range
+    days_diff = (end_date - start_date).days + 1
+    dates = [start_date + timedelta(days=i) for i in range(days_diff)]
+
+    # Query progress records using modern async syntax
+    stmt = (
+        select(Progress)
+        .where(
+            Progress.user_id == user_id,
+            Progress.date >= start_date,
+            Progress.date <= end_date
+        )
+    )
+    result = await db.execute(stmt)
+    results = result.scalars().all()  # Fetch all Progress objects
+
+    if not results:
+        return {
+            "completionRates": {},
+            "stackedData": {},
+            "dates": [d.isoformat() for d in dates],
+            "lineData": [0.0] * days_diff
         }
-        logger.info(f"Completion stats calculated for user {user_id}")
-        return stats
-    except Exception as e:
-        logger.error(f"Error calculating completion stats: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to calculate completion stats: {str(e)}")
+
+    # Calculate completion rates per habit
+    habit_counts: Dict[str, int] = {}
+    habit_totals: Dict[str, int] = {}
+    daily_totals: Dict[str, Dict[str, int]] = {d.isoformat(): {"completed": 0, "total": 0} for d in dates}
+
+    for progress in results:
+        habit = progress.habit
+        date_str = progress.date.isoformat()
+        habit_counts[habit] = habit_counts.get(habit, 0) + (1 if progress.status else 0)
+        habit_totals[habit] = habit_totals.get(habit, 0) + 1
+        daily_totals[date_str]["completed"] += 1 if progress.status else 0
+        daily_totals[date_str]["total"] += 1
+
+    completion_rates = {
+        habit: habit_counts[habit] / habit_totals[habit] if habit_totals[habit] > 0 else 0.0
+        for habit in habit_totals
+    }
+
+    # Build stackedData (daily counts per habit)
+    stacked_data: Dict[str, List[int]] = {habit: [0] * days_diff for habit in habit_totals}
+    for progress in results:
+        habit = progress.habit
+        day_index = (progress.date - start_date).days
+        if progress.status:
+            stacked_data[habit][day_index] += 1
+
+    # Calculate lineData (daily completion percentages)
+    line_data = [
+        (daily_totals[d.isoformat()]["completed"] / daily_totals[d.isoformat()]["total"] * 100)
+        if daily_totals[d.isoformat()]["total"] > 0 else 0.0
+        for d in dates
+    ]
+
+    return {
+        "completionRates": completion_rates,
+        "stackedData": stacked_data,
+        "dates": [d.isoformat() for d in dates],
+        "lineData": line_data
+    }
 
 async def fill_missing_data(db: AsyncSession, habits: List[str], user_id: int) -> None:
     """Fill missing progress records with default status=False for a user."""

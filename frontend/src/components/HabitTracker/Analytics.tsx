@@ -2,20 +2,16 @@
 import { Card } from "../../components/ui/Card";
 import { Bar, Line } from "react-chartjs-2";
 import "chart.js/auto";
+import { useMemo } from "react";
+import { AnalyticsData, Habit } from "../../types";
 
-interface AnalyticsData {
-  dates: string[];
-  stackedData: {
-    [category: string]: number[];
-  };
-  lineData: number[];
-}
-
+// Assuming habits are passed to map habit names to categories
 interface AnalyticsSectionProps {
   analyticsData: AnalyticsData;
+  habits: Habit[]; // Add habits to map categories
 }
 
-export default function AnalyticsSection({ analyticsData }: AnalyticsSectionProps) {
+export default function AnalyticsSection({ analyticsData, habits }: AnalyticsSectionProps) {
   // Format date to show date and time
   const formatDate = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -27,10 +23,44 @@ export default function AnalyticsSection({ analyticsData }: AnalyticsSectionProp
     });
   };
 
+const chartData = useMemo(() => {
+  const dates = analyticsData.dates || generateDateRange(30);
+  const habitToCategory = habits.reduce((acc, habit) => {
+    acc[habit.habit] = habit.category || "Uncategorized";
+    return acc;
+  }, {} as Record<string, string>);
+
+  const stackedByCategory: Record<string, number[]> = {};
+  if (analyticsData.stackedData) {
+    Object.entries(analyticsData.stackedData).forEach(([habit, counts]) => {
+      const category = habitToCategory[habit] || "Uncategorized";
+      stackedByCategory[category] = stackedByCategory[category] || new Array(dates.length).fill(0);
+      counts.forEach((count, i) => {
+        stackedByCategory[category][i] += count;
+      });
+    });
+  }
+
+  return { 
+    dates, 
+    stackedByCategory, 
+    lineData: analyticsData.lineData || new Array(dates.length).fill(0) 
+  };
+}, [analyticsData, habits]);
+
+  // Generate fallback date range if not provided
+  const generateDateRange = (days: number) => {
+    return Array.from({ length: days }, (_, i) => {
+      const date = new Date();
+      date.setDate(date.getDate() - (days - 1 - i));
+      return date.toISOString().split('T')[0];
+    });
+  };
+
   // Prepare data for the stacked bar chart
   const stackedBarData = {
-    labels: analyticsData.dates.map(formatDate),
-    datasets: Object.entries(analyticsData.stackedData || {}).map(([category, data]) => {
+    labels: chartData.dates.map(formatDate),
+    datasets: Object.entries(chartData.stackedByCategory).map(([category, data]) => {
       const categoryColors: Record<string, string> = {
         Health: "rgba(75,192,192,0.8)",
         Productivity: "rgba(153,102,255,0.8)",
@@ -54,20 +84,15 @@ export default function AnalyticsSection({ analyticsData }: AnalyticsSectionProp
       },
       tooltip: {
         callbacks: {
-          title: (context: any) => {
-            return formatDate(analyticsData.dates[context[0].dataIndex]);
-          }
-        }
-      }
+          title: (context: any) => formatDate(chartData.dates[context[0].dataIndex]),
+        },
+      },
     },
     responsive: true,
     scales: {
       x: { 
         stacked: true,
-        ticks: {
-          maxRotation: 45,
-          minRotation: 45
-        }
+        ticks: { maxRotation: 45, minRotation: 45 },
       },
       y: { stacked: true, beginAtZero: true },
     },
@@ -75,11 +100,11 @@ export default function AnalyticsSection({ analyticsData }: AnalyticsSectionProp
 
   // Prepare data for the line chart
   const lineChartData = {
-    labels: analyticsData.dates.map(formatDate),
+    labels: chartData.dates.map(formatDate),
     datasets: [
       {
         label: "Overall Completion Trend (%)",
-        data: analyticsData.lineData,
+        data: chartData.lineData,
         borderColor: "rgba(75,192,192,1)",
         backgroundColor: "rgba(75,192,192,0.2)",
         fill: true,
@@ -95,20 +120,13 @@ export default function AnalyticsSection({ analyticsData }: AnalyticsSectionProp
       },
       tooltip: {
         callbacks: {
-          title: (context: any) => {
-            return formatDate(analyticsData.dates[context[0].dataIndex]);
-          }
-        }
-      }
+          title: (context: any) => formatDate(chartData.dates[context[0].dataIndex]),
+        },
+      },
     },
     responsive: true,
     scales: {
-      x: {
-        ticks: {
-          maxRotation: 45,
-          minRotation: 45
-        }
-      },
+      x: { ticks: { maxRotation: 45, minRotation: 45 } },
       y: { beginAtZero: true, max: 100 },
     },
   };
@@ -126,4 +144,4 @@ export default function AnalyticsSection({ analyticsData }: AnalyticsSectionProp
       </div>
     </Card>
   );
-}
+};

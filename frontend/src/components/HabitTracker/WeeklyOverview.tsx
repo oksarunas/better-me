@@ -2,7 +2,7 @@
 import { Card } from "../../components/ui/Card";
 import { Badge } from "../../components/ui/Badge";
 import { format, parseISO } from "date-fns";
-import { WeeklyData } from "../../types";
+import { WeeklyData, DailyAggregate } from "../../types";
 import { useMemo } from "react";
 
 interface WeeklyOverviewProps {
@@ -11,64 +11,86 @@ interface WeeklyOverviewProps {
   isLoading?: boolean;
 }
 
-const HabitBarChart = ({ data, className = "" }: { data: WeeklyData[]; className?: string }) => {
+interface DayData extends DailyAggregate {
+  percentage: number;
+}
+
+const HabitBarChart = ({ data, className = "" }: { data: DayData[]; className?: string }) => {
   return (
     <div className={`h-32 flex items-end gap-2 ${className}`}>
-      {data.map((day, i) => {
-        const percentage = useMemo(() => 
-          day.total > 0 ? (day.completed / day.total) * 100 : 0,
-        [day.completed, day.total]);
-        
-        return (
-          <div
-            key={i}
-            role="progressbar"
-            aria-valuenow={percentage}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-label={`${format(parseISO(day.date), 'EEEE')} completion ${Math.round(percentage)}%`}
-            className="flex-1 rounded-t relative group cursor-pointer transform transition-all duration-300 ease-out"
-            style={{
-              height: `${percentage}%`,
-              backgroundColor: `hsla(${Math.min(percentage * 1.2, 120)}, 70%, 45%, 0.2)`,
-            }}
+      {data.map((day, i) => (
+        <div
+          key={i}
+          role="progressbar"
+          aria-valuenow={day.percentage}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label={`${format(parseISO(day.date), 'EEEE')} completion ${Math.round(day.percentage)}%`}
+          className="flex-1 rounded-t relative group cursor-pointer transform transition-all duration-300 ease-out"
+          style={{
+            height: `${day.percentage}%`,
+            backgroundColor: `hsla(${Math.min(day.percentage * 1.2, 120)}, 70%, 45%, 0.2)`,
+          }}
+        >
+          <div 
+            className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-all duration-200"
+            role="tooltip"
           >
-            <div 
-              className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-all duration-200"
-              role="tooltip"
-            >
-              <Badge variant="outline">{Math.round(percentage)}%</Badge>
-            </div>
+            <Badge variant="outline">{Math.round(day.percentage)}%</Badge>
           </div>
-        );
-      })}
+        </div>
+      ))}
     </div>
   );
 };
 
-const DayCard = ({ data, isToday }: { data: WeeklyData; isToday: boolean }) => {
-  const percentage = useMemo(() => 
-    data.total > 0 ? (data.completed / data.total) * 100 : 0,
-  [data.completed, data.total]);
-
+const DayCard = ({ data, isToday }: { data: DayData; isToday: boolean }) => {
   return (
     <div
       className={`flex flex-col items-center p-2 rounded w-12 transition-colors duration-200
         ${isToday ? "bg-green-600 hover:bg-green-700" : "bg-gray-800 hover:bg-gray-700"}
       `}
       role="article"
-      aria-label={`${format(parseISO(data.date), 'EEEE')} ${Math.round(percentage)}% completed`}
+      aria-label={`${format(parseISO(data.date), 'EEEE')} ${Math.round(data.percentage)}% completed`}
     >
       <span className="text-sm font-semibold">{format(parseISO(data.date), "EEE")}</span>
       <span className="text-xs">{format(parseISO(data.date), "d")}</span>
       <Badge variant="outline" className="mt-1">
-        {Math.round(percentage)}%
+        {Math.round(data.percentage)}%
       </Badge>
     </div>
   );
 };
 
 export default function WeeklyOverview({ weeklyData, todayDate, isLoading = false }: WeeklyOverviewProps) {
+  // Aggregate and compute percentages at the top level
+  const aggregatedData = useMemo(() => {
+    if (!weeklyData.length) return [];
+
+    const result = weeklyData.reduce((acc: DailyAggregate[], item: WeeklyData) => {
+      const existingDay = acc.find(entry => entry.date === item.date);
+      if (existingDay) {
+        existingDay.completed += item.status ? 1 : 0;
+        existingDay.total += 1;
+      } else {
+        acc.push({
+          date: item.date,
+          completed: item.status ? 1 : 0,
+          total: 1
+        });
+      }
+      return acc;
+    }, []);
+
+    // Add percentage to each day
+    return result
+      .map(day => ({
+        ...day,
+        percentage: day.total > 0 ? (day.completed / day.total) * 100 : 0
+      }))
+      .sort((a, b) => a.date.localeCompare(b.date)) as DayData[];
+  }, [weeklyData]);
+
   if (isLoading) {
     return (
       <Card className="p-6 bg-gray-900/30 border-gray-800 animate-pulse">
@@ -78,7 +100,7 @@ export default function WeeklyOverview({ weeklyData, todayDate, isLoading = fals
     );
   }
 
-  if (!weeklyData?.length) {
+  if (!aggregatedData.length) {
     return (
       <Card className="p-6 bg-gray-900/30 border-gray-800">
         <p className="text-center text-gray-400">No data available for this week</p>
@@ -89,10 +111,10 @@ export default function WeeklyOverview({ weeklyData, todayDate, isLoading = fals
   return (
     <Card className="p-6 bg-gray-900/30 border-gray-800">
       <h3 className="text-lg font-medium mb-4">Weekly Habit Completion Progress</h3>
-      <HabitBarChart data={weeklyData} />
+      <HabitBarChart data={aggregatedData} />
       <h4 className="mt-6 mb-2 text-md font-semibold">Week at a Glance</h4>
       <div className="flex justify-between gap-2 overflow-x-auto">
-        {weeklyData.map((data) => (
+        {aggregatedData.map((data) => (
           <DayCard
             key={data.date}
             data={data}

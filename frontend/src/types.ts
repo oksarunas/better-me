@@ -36,26 +36,39 @@ export interface Habit {
   user_id: number; // Added for completeness
 }
 
-// RawHabit type (for /progress/weekly response)
-export interface RawHabit {
-  id: number; // Added if backend includes it
-  habit: string; // Added if backend includes it
-  date: string;
-  status: boolean;
-  user_id: number; // Added if backend includes it
-}
 
 // WeeklyData type (processed data for HabitTracker)
 export interface WeeklyData {
+  id: number;
+  date: string;
+  habit: string;
+  status: boolean;
+  streak: number;
+  category?: string | null;
+  completion_pct?: number | null;
+}
+
+export interface ChartData {
+  name: string;
+  progress: number;
+}
+
+export interface DailyAggregate {
   date: string;
   completed: number;
   total: number;
 }
 
+export interface DayData extends DailyAggregate {
+  percentage: number;
+}
+
 // Analytics type (for /analytics/completion response)
 export interface AnalyticsData {
   completionRates: Record<string, number>; // e.g., {"7 hours of sleep": 0.0, "Read for 20 minutes": 0.0}
-  stackedData?: Record<string, number[]>; // Optional, if backend provides daily counts
+  stackedData?: Record<string, number[]>;
+  dates?: string[];
+  lineData?: number[];
 }
 
 // Props interfaces

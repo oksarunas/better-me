@@ -55,3 +55,24 @@ class HabitCreate(BaseModel):
     date: date
     class Config:
         from_attributes = True
+
+
+class AnalyticsResponse(BaseModel):
+    completionRates: Dict[str, float]
+    stackedData: Optional[Dict[str, List[int]]] = None
+    dates: List[str]
+    lineData: List[float]
+
+    class Config:
+        from_attributes = True  # Replaces orm_mode
+        json_schema_extra = {   # Replaces schema_extra
+            "example": {
+                "completionRates": {"5 g of creatine": 0.5, "Sleep 7 hours": 0.8},
+                "stackedData": {
+                    "5 g of creatine": [1, 0, 1],
+                    "Sleep 7 hours": [1, 1, 0]
+                },
+                "dates": ["2025-04-01", "2025-04-02", "2025-04-03"],
+                "lineData": [66.7, 50.0, 33.3]
+            }
+        }

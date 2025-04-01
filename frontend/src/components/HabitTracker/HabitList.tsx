@@ -4,7 +4,8 @@ import { Checkbox } from "../../components/ui/Checkbox";
 import { Badge } from "../../components/ui/Badge";
 import { Flame } from "lucide-react";
 import { Habit } from "../../types";
-import { Progress } from '../ui/Progress';
+import { Progress } from "../ui/Progress";
+import { motion } from "framer-motion";
 
 interface HabitListProps {
   groupedHabits: Record<string, Habit[]>;
@@ -12,8 +13,14 @@ interface HabitListProps {
 }
 
 export default function HabitList({ groupedHabits, toggleHabit }: HabitListProps) {
+  const STREAK_GOAL = 30; // Configurable streak goal
+  
   return (
-    <div>
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={{ duration: 0.3 }}
+    >
       <h2 className="text-xl font-semibold mb-4">Daily Checklist</h2>
       {Object.entries(groupedHabits).map(([category, categoryHabits]) => (
         <div key={category} className="mb-8">
@@ -31,35 +38,42 @@ export default function HabitList({ groupedHabits, toggleHabit }: HabitListProps
                     checked={habit.status}
                     onChange={(e) => toggleHabit(habit.id, e.target.checked)}
                     className="h-5 w-5 transition-all data-[state=checked]:bg-green-500 hover:scale-110"
+                    id={`habit-${habit.id}`}
+                    aria-label={`Toggle ${habit.habit} status, currently ${habit.status ? "completed" : "incomplete"}`}
                   />
                   <div className="flex-1">
-                    <span className="font-medium">{habit.habit}</span>
+                    <label
+                      htmlFor={`habit-${habit.id}`}
+                      className="font-medium cursor-pointer"
+                    >
+                      {habit.habit}
+                    </label>
                     <div className="mt-1 flex items-center gap-2">
-                      <Badge 
-                        variant={habit.status ? "primary" : "secondary"} 
+                      <Badge
+                        variant={habit.status ? "primary" : "secondary"}
                         className="transition-all"
                       >
-                        {habit.category}
+                        {habit.category || "Uncategorized"}
                       </Badge>
                       {habit.streak > 0 && (
-                        <Badge 
-                          variant="success" 
-                          className="animate-pulse"
+                        <Badge
+                          variant="success"
+                          className="animate-pulse flex items-center gap-1"
                         >
-                          🔥 {habit.streak} day streak
+                          <Flame className="h-4 w-4" />
+                          {habit.streak} day streak
                         </Badge>
                       )}
                     </div>
-                    <Progress
-                      className={`mt-2`}
-                      value={habit.streak}
-                      max={30}
-                      variant="glass"
-                      indicatorVariant="rainbow"
-                      animated={true}
-                      showValue={true}
-                      valueLabel="day streak"
-                    />
+                    <div className="mt-2 relative">
+                      <Progress
+                        className="h-2"
+                        value={(habit.streak / STREAK_GOAL) * 100}
+                      />
+                      <span className="text-xs text-gray-400 mt-1 inline-block">
+                        {habit.streak} / {STREAK_GOAL} day streak
+                      </span>
+                    </div>
                   </div>
                 </div>
               </Card>
@@ -67,6 +81,6 @@ export default function HabitList({ groupedHabits, toggleHabit }: HabitListProps
           </div>
         </div>
       ))}
-    </div>
+    </motion.div>
   );
 }
