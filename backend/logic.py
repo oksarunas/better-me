@@ -88,6 +88,7 @@ async def get_weekly_progress(db: AsyncSession, user_id: int, start_date: Option
             logger.info(f"No habits found for user {user_id}, returning empty weekly progress")
             return []
 
+        # Fetch all existing records for the date range
         rows = await fetch_progress_date_range(db, week_start, today, user_id)
         row_map = {(row.date, row.habit): row for row in rows}
         results: List[ProgressRead] = []
@@ -101,33 +102,34 @@ async def get_weekly_progress(db: AsyncSession, user_id: int, start_date: Option
                     results.append(ProgressRead(
                         id=row.id, date=row.date, habit=row.habit,
                         status=row.status, streak=row.streak, completion_pct=None,
-                        category=row.category  # Include category
+                        category=row.category
                     ))
                 else:
+                    # Check for existence explicitly before creating
                     existing = await fetch_progress_by_date_and_habit(db, current_date, habit, user_id)
-                    if not existing:
-                        await update_progress_status(
-                            db=db, date_obj=current_date, habit=habit, user_id=user_id,
-                            updates={"status": False}
-                        )
-                        new_record = await fetch_progress_by_date_and_habit(db, current_date, habit, user_id)
-                        results.append(ProgressRead(
-                            id=new_record.id, date=new_record.date, habit=new_record.habit,
-                            status=new_record.status, streak=new_record.streak, completion_pct=None,
-                            category=new_record.category  # Include category
-                        ))
-                    else:
+                    if existing:
                         results.append(ProgressRead(
                             id=existing.id, date=existing.date, habit=existing.habit,
                             status=existing.status, streak=existing.streak, completion_pct=None,
-                            category=existing.category  # Include category
+                            category=existing.category
                         ))
+                    # Optionally skip creation here and assume records are created elsewhere
+                    # else:
+                    #     await update_progress_status(
+                    #         db=db, date_obj=current_date, habit=habit, user_id=user_id,
+                    #         updates={"status": False}
+                    #     )
+                    #     new_record = await fetch_progress_by_date_and_habit(db, current_date, habit, user_id)
+                    #     results.append(ProgressRead(
+                    #         id=new_record.id, date=new_record.date, habit=new_record.habit,
+                    #         status=new_record.status, streak=new_record.streak, completion_pct=None,
+                    #         category=new_record.category
+                    #     ))
         logger.info(f"Weekly progress fetched for user {user_id}")
         return results
     except Exception as e:
         logger.error(f"Error fetching weekly progress: {e}")
         raise HTTPException(status_code=500, detail=f"Failed to fetch weekly progress: {str(e)}")
-
 async def get_completion_stats(db: AsyncSession, user_id: int, start_date: date, end_date: date) -> Dict[str, float]:
     """Calculate habit completion percentages for a date range."""
     try:

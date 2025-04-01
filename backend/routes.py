@@ -7,6 +7,7 @@ from sqlalchemy import select
 from pydantic import BaseModel
 from datetime import timedelta
 from typing import Optional
+from streak_calculations import recalc_all_streaks, recalculate_streaks_for_habit
 
 from auth import (
     get_current_user, register_user, login_user, google_login_user,
@@ -104,17 +105,35 @@ async def patch_progress(
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
-    """Partially update a progress record by its ID."""
     try:
-        record = await patch_progress_record(progress_id, progress_update, db, current_user.id)
-        await recalc_all_streaks(db)
-        return record
+        # Get the raw SQLAlchemy Progress object first
+        result = await db.execute(
+            select(Progress).where(Progress.id == progress_id, Progress.user_id == current_user.id)
+        )
+        progress_record = result.scalar_one_or_none()
+        if not progress_record:
+            raise HTTPException(status_code=404, detail="Progress record not found or unauthorized")
+
+        # Apply updates
+        updates_dict = progress_update.dict(exclude_unset=True)
+        if not updates_dict:
+            raise HTTPException(status_code=400, detail="No fields provided for update")
+        for key, value in updates_dict.items():
+            setattr(progress_record, key, value)
+        await db.commit()
+
+        # Recalculate streaks and refresh
+        await recalculate_streaks_for_habit(db, progress_record.habit, current_user.id)
+        await db.refresh(progress_record)  # Refresh the SQLAlchemy object
+
+        # Convert to ProgressRead for response
+        return ProgressRead.model_validate(progress_record)  # Or .from_orm() for Pydantic v1
     except HTTPException as he:
         raise he
     except Exception as e:
         logger.error(f"Error updating progress {progress_id}: {e}")
         raise HTTPException(status_code=500, detail="Failed to update progress record")
-
+    
 # --- Analytics Routes ---
 @router.get("/analytics/completion", response_model=Dict[str, float])
 async def completion_stats(
@@ -196,17 +215,17 @@ async def health_check(db: AsyncSession = Depends(get_db)) -> dict:
         raise HTTPException(status_code=503, detail=app_status)
     return app_status
 
-@router.post("/habits", response_model=ProgressRead)  # Update response_model
+@router.post("/habits", response_model=ProgressRead, status_code=201)
 async def create_habit(
     habit: HabitCreate, 
     db: AsyncSession = Depends(get_db),
-    current_user: User = Depends(get_current_user)  # Optional: enforce authenticated user
+    current_user: User = Depends(get_current_user)
 ):
     logger.info(f"Creating habit: {habit.habit} for user {habit.user_id}")
     db_progress = Progress(
         habit=habit.habit,
         category=habit.category,
-        user_id=habit.user_id,  # Or current_user.id if using authentication
+        user_id=habit.user_id,
         date=habit.date,
         status=False,
         streak=0
@@ -215,15 +234,11 @@ async def create_habit(
     try:
         await db.commit()
         await db.refresh(db_progress)
-        # Return as ProgressRead instead of __dict__
-        return ProgressRead(
-            id=db_progress.id,
-            date=db_progress.date,
-            habit=db_progress.habit,
-            status=db_progress.status,
-            streak=db_progress.streak,
-            category=db_progress.category
-        )
+        # Recalculate streaks after creating the habit
+        await recalc_all_streaks(db)
+        # Refresh again to get the updated streak value
+        await db.refresh(db_progress)
+        return ProgressRead.model_validate(db_progress)  # Or .from_orm() for Pydantic v1
     except Exception as e:
         await db.rollback()
         logger.error(f"Failed to create habit: {str(e)}")
